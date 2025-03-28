@@ -1,95 +1,244 @@
 <!DOCTYPE html>
 <html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Louien Franco</title>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jogging Tracker with IndexedDB - Dark Mode Map</title>
+  <link href="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css" rel="stylesheet" />
+  <style>
+    body, html { margin: 0; padding: 0; height: 100%; }
+    #map { width: 100%; height: 100%; }
+    /* Overlay controls styling */
+    .control-buttons {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .control-buttons button {
+      padding: 10px 20px;
+      background-color: #FF0000;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .control-buttons button:disabled {
+      background-color: #aaa;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <div class="control-buttons">
+    <button id="startTracking">Start Tracking</button>
+    <button id="stopTracking" disabled>Stop Tracking</button>
+    <button id="exportTracking">Export Path</button>
+    <button id="importTracking">Import Path</button>
+  </div>
+  <input type="file" id="importFile" style="display: none;" accept="application/json" />
+  <div id="map"></div>
 
-		<!-- SEO Meta Tags -->
-		<meta
-			name="description"
-			content="Explore the portfolio of Louien Franco showcasing skills, projects, and expertise in IT industry."
-		/>
-		<meta
-			name="keywords"
-			content="portfolio, web development, design, projects, [your expertise]"
-		/>
-		<meta name="author" content="Louien Franco" />
+  <script src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
+  <script>
+    // --- IndexedDB Functions ---
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open("JoggingTracker", 1);
+        request.onerror = () => reject("Error opening IndexedDB");
+        request.onsuccess = (e) => resolve(e.target.result);
+        request.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains("tracking")) {
+            db.createObjectStore("tracking", { keyPath: "id" });
+          }
+        };
+      });
+    }
 
-		<!-- Open Graph (for better social media sharing) -->
-		<meta property="og:title" content="My Portfolio | Louien Franco" />
-		<meta
-			property="og:description"
-			content="Check out my work in web development, UI/UX, and more."
-		/>
-		<!-- <meta property="og:image" content="[Your Portfolio Thumbnail Image URL]" />
-		<meta property="og:url" content="[Your Portfolio Website URL]" />
-		<meta property="og:type" content="website" /> -->
+    function updateDB(data) {
+      openDB().then(db => {
+        const tx = db.transaction("tracking", "readwrite");
+        const store = tx.objectStore("tracking");
+        store.put({ id: "current", coordinates: data });
+      }).catch(err => console.error(err));
+    }
 
-		<!-- Twitter Card (for Twitter sharing) -->
-		<!-- <meta name="twitter:card" content="summary_large_image" />
-		<meta name="twitter:title" content="My Portfolio | [Your Name]" />
-		<meta
-			name="twitter:description"
-			content="Explore my latest projects and skills in web development."
-		/>
-		<meta name="twitter:image" content="[Your Portfolio Thumbnail Image URL]" /> -->
+    function getCurrentPath() {
+      return new Promise((resolve, reject) => {
+        openDB().then(db => {
+          const tx = db.transaction("tracking", "readonly");
+          const store = tx.objectStore("tracking");
+          const request = store.get("current");
+          request.onsuccess = (e) => {
+            resolve(e.target.result ? e.target.result.coordinates : []);
+          };
+          request.onerror = () => reject("Error reading from DB");
+        }).catch(err => reject(err));
+      });
+    }
 
-		<!-- Canonical URL (Avoids duplicate content issues) -->
-		<link rel="canonical" href="[Your Portfolio Website URL]" />
+    // --- Map & Tracking Setup ---
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: 'https://tiles.stadiamaps.com/styles/alidade_smooth_dark.json',
+      center: [120.9820, 14.6042],
+      zoom: 12
+    });
 
-		<!-- Favicon -->
-		<link rel="icon" href="[Your Favicon URL]" type="image/png" />
+    // Add navigation control
+    map.addControl(new maplibregl.NavigationControl());
 
-		<!-- CSS for Fullscreen iFrame -->
-		<style>
-			* {
-				margin: 0;
-				padding: 0;
-				border: 0;
-				box-sizing: border-box;
-			}
+    // GeolocateControl for obtaining user's position
+    const geolocateControl = new maplibregl.GeolocateControl({
+      positionOptions: { enableHighAccuracy: true },
+      trackUserLocation: true,
+      showUserHeading: true
+    });
+    map.addControl(geolocateControl);
 
-			html,
-			body {
-				width: 100%;
-				height: 100%;
-				overflow: hidden;
-				background-color: #ffffff;
-			}
+    // Variables to manage tracking
+    let trackingActive = false;
+    let trackingCoordinates = [];
 
-			iframe {
-				width: 100vw;
-				height: 100vh;
-				border: none;
-				display: block;
-			}
+    // When the map loads, add a GeoJSON source and layer for the red tracking line.
+    map.on('load', () => {
+      map.addSource('tracking-line', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'LineString',
+            coordinates: trackingCoordinates
+          }
+        }
+      });
+      map.addLayer({
+        id: 'tracking-line-layer',
+        type: 'line',
+        source: 'tracking-line',
+        layout: {
+          'line-join': 'round',
+          'line-cap': 'round'
+        },
+        paint: {
+          'line-color': '#FF0000',
+          'line-width': 4
+        }
+      });
+    });
 
-			/* Fallback message for SEO & No-JS Users */
-			noscript {
-				display: block;
-				text-align: center;
-				padding: 20px;
-				font-size: 18px;
-				color: #333;
-			}
-		</style>
-	</head>
-	<body>
-		<iframe
-			src="https://kzmquyithuvn03lbm2y9.lite.vusercontent.net/"
-			loading="lazy"
-		></iframe>
+    // Update tracking line and save to IndexedDB on geolocation events
+    geolocateControl.on('geolocate', (e) => {
+      if (!trackingActive) return;
+      const { longitude, latitude } = e.coords;
+      const newCoords = [longitude, latitude];
 
-		<!-- Fallback for No-JavaScript Browsers -->
-		<noscript>
-			<p>
-				Your browser does not support JavaScript or has it disabled. Visit my
-				portfolio directly at
-				<a href="https://kzmquyithuvn03lbm2y9.lite.vusercontent.net/"
-					>this link</a
-				>.
-			</p>
-		</noscript>
-	</body>
+      // Append only if the new coordinate is different from the last one
+      if (
+        trackingCoordinates.length === 0 ||
+        (trackingCoordinates[trackingCoordinates.length - 1][0] !== longitude ||
+         trackingCoordinates[trackingCoordinates.length - 1][1] !== latitude)
+      ) {
+        trackingCoordinates.push(newCoords);
+      }
+
+      // Update the map source
+      const source = map.getSource('tracking-line');
+      if (source) {
+        source.setData({
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'LineString',
+            coordinates: trackingCoordinates
+          }
+        });
+      }
+      // Save the updated path to IndexedDB
+      updateDB(trackingCoordinates);
+    });
+
+    // --- Button Controls ---
+    const startBtn = document.getElementById('startTracking');
+    const stopBtn = document.getElementById('stopTracking');
+    const exportBtn = document.getElementById('exportTracking');
+    const importBtn = document.getElementById('importTracking');
+    const importFileInput = document.getElementById('importFile');
+
+    // Start Tracking: resets the path, activates tracking, and triggers an immediate location capture.
+    startBtn.addEventListener('click', () => {
+      trackingCoordinates = [];
+      trackingActive = true;
+      geolocateControl.trigger();
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+    });
+
+    // Stop Tracking: deactivates tracking but retains the current path.
+    stopBtn.addEventListener('click', () => {
+      trackingActive = false;
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+    });
+
+    // Export the current tracking path as a JSON file
+    exportBtn.addEventListener('click', () => {
+      getCurrentPath().then(data => {
+        const jsonData = JSON.stringify(data);
+        const blob = new Blob([jsonData], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'tracking_path.json';
+        a.click();
+        URL.revokeObjectURL(url);
+      }).catch(err => console.error(err));
+    });
+
+    // Import a tracking path from a JSON file
+    importBtn.addEventListener('click', () => {
+      importFileInput.click();
+    });
+
+    importFileInput.addEventListener('change', event => {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const importedData = JSON.parse(e.target.result);
+          if (Array.isArray(importedData)) {
+            trackingCoordinates = importedData;
+            // Update the map source with imported coordinates
+            const source = map.getSource('tracking-line');
+            if (source) {
+              source.setData({
+                type: 'Feature',
+                properties: {},
+                geometry: {
+                  type: 'LineString',
+                  coordinates: trackingCoordinates
+                }
+              });
+            }
+            // Save the imported path to IndexedDB
+            updateDB(trackingCoordinates);
+          } else {
+            alert('Invalid data format in file.');
+          }
+        } catch (err) {
+          console.error("Error parsing file:", err);
+          alert("Failed to parse the file.");
+        }
+      };
+      reader.readAsText(file);
+    });
+  </script>
+</body>
 </html>
