@@ -4,16 +4,25 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Jogging Tracker with IndexedDB - Dark Mode Map</title>
+  <!-- MapLibre GL CSS -->
   <link href="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css" rel="stylesheet" />
   <style>
-    body, html { margin: 0; padding: 0; height: 100%; }
-    #map { width: 100%; height: 100%; }
+    body, html { 
+      margin: 0; 
+      padding: 0; 
+      height: 100%; 
+      font-family: Arial, sans-serif;
+    }
+    #map { 
+      width: 100%; 
+      height: 100%; 
+    }
     /* Overlay controls styling */
     .control-buttons {
       position: absolute;
       top: 20px;
       left: 20px;
-      z-index: 1;
+      z-index: 2;
       display: flex;
       flex-direction: column;
       gap: 10px;
@@ -34,18 +43,23 @@
   </style>
 </head>
 <body>
+  <!-- Control buttons -->
   <div class="control-buttons">
     <button id="startTracking">Start Tracking</button>
     <button id="stopTracking" disabled>Stop Tracking</button>
     <button id="exportTracking">Export Path</button>
     <button id="importTracking">Import Path</button>
   </div>
+  <!-- Hidden file input for import -->
   <input type="file" id="importFile" style="display: none;" accept="application/json" />
+  <!-- Map Container -->
   <div id="map"></div>
 
+  <!-- MapLibre GL JS -->
   <script src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
   <script>
-    // --- IndexedDB Functions ---
+    // ------------------ IndexedDB Setup ------------------
+    // Open or create an IndexedDB named "JoggingTracker" with an object store "tracking"
     function openDB() {
       return new Promise((resolve, reject) => {
         const request = indexedDB.open("JoggingTracker", 1);
@@ -60,6 +74,7 @@
       });
     }
 
+    // Save current tracking coordinates to IndexedDB
     function updateDB(data) {
       openDB().then(db => {
         const tx = db.transaction("tracking", "readwrite");
@@ -68,6 +83,7 @@
       }).catch(err => console.error(err));
     }
 
+    // Retrieve the saved tracking coordinates from IndexedDB
     function getCurrentPath() {
       return new Promise((resolve, reject) => {
         openDB().then(db => {
@@ -82,7 +98,8 @@
       });
     }
 
-    // --- Map & Tracking Setup ---
+    // ------------------ Map & Tracking Setup ------------------
+    // Initialize the map with a dark-mode street style from Stadia Maps
     const map = new maplibregl.Map({
       container: 'map',
       style: 'https://tiles.stadiamaps.com/styles/alidade_smooth_dark.json',
@@ -90,10 +107,10 @@
       zoom: 12
     });
 
-    // Add navigation control
+    // Add zoom and rotation controls to the map
     map.addControl(new maplibregl.NavigationControl());
 
-    // GeolocateControl for obtaining user's position
+    // Add GeolocateControl to get the user's location; note this must be served over HTTPS
     const geolocateControl = new maplibregl.GeolocateControl({
       positionOptions: { enableHighAccuracy: true },
       trackUserLocation: true,
@@ -101,11 +118,11 @@
     });
     map.addControl(geolocateControl);
 
-    // Variables to manage tracking
+    // Variables to manage tracking state and coordinates
     let trackingActive = false;
     let trackingCoordinates = [];
 
-    // When the map loads, add a GeoJSON source and layer for the red tracking line.
+    // Once the map loads, add a GeoJSON source and layer for the red tracking line.
     map.on('load', () => {
       map.addSource('tracking-line', {
         type: 'geojson',
@@ -118,6 +135,7 @@
           }
         }
       });
+
       map.addLayer({
         id: 'tracking-line-layer',
         type: 'line',
@@ -133,13 +151,13 @@
       });
     });
 
-    // Update tracking line and save to IndexedDB on geolocation events
+    // Listen for geolocation events to update the tracking line and save to IndexedDB.
     geolocateControl.on('geolocate', (e) => {
       if (!trackingActive) return;
       const { longitude, latitude } = e.coords;
       const newCoords = [longitude, latitude];
 
-      // Append only if the new coordinate is different from the last one
+      // Append the coordinate only if it differs from the last recorded one.
       if (
         trackingCoordinates.length === 0 ||
         (trackingCoordinates[trackingCoordinates.length - 1][0] !== longitude ||
@@ -148,7 +166,7 @@
         trackingCoordinates.push(newCoords);
       }
 
-      // Update the map source
+      // Update the GeoJSON source with the new tracking coordinates.
       const source = map.getSource('tracking-line');
       if (source) {
         source.setData({
@@ -160,11 +178,11 @@
           }
         });
       }
-      // Save the updated path to IndexedDB
+      // Save the updated path to IndexedDB.
       updateDB(trackingCoordinates);
     });
 
-    // --- Button Controls ---
+    // ------------------ Button Controls ------------------
     const startBtn = document.getElementById('startTracking');
     const stopBtn = document.getElementById('stopTracking');
     const exportBtn = document.getElementById('exportTracking');
@@ -175,19 +193,20 @@
     startBtn.addEventListener('click', () => {
       trackingCoordinates = [];
       trackingActive = true;
+      // Trigger geolocation immediately to capture the starting point.
       geolocateControl.trigger();
       startBtn.disabled = true;
       stopBtn.disabled = false;
     });
 
-    // Stop Tracking: deactivates tracking but retains the current path.
+    // Stop Tracking: deactivates further tracking while preserving the current path.
     stopBtn.addEventListener('click', () => {
       trackingActive = false;
       startBtn.disabled = false;
       stopBtn.disabled = true;
     });
 
-    // Export the current tracking path as a JSON file
+    // Export the current tracking path as a JSON file.
     exportBtn.addEventListener('click', () => {
       getCurrentPath().then(data => {
         const jsonData = JSON.stringify(data);
@@ -201,11 +220,12 @@
       }).catch(err => console.error(err));
     });
 
-    // Import a tracking path from a JSON file
+    // Trigger the file input for importing a tracking path.
     importBtn.addEventListener('click', () => {
       importFileInput.click();
     });
 
+    // Handle the file import event to load and visualize a saved tracking path.
     importFileInput.addEventListener('change', event => {
       const file = event.target.files[0];
       if (!file) return;
@@ -215,7 +235,7 @@
           const importedData = JSON.parse(e.target.result);
           if (Array.isArray(importedData)) {
             trackingCoordinates = importedData;
-            // Update the map source with imported coordinates
+            // Update the map source with imported coordinates.
             const source = map.getSource('tracking-line');
             if (source) {
               source.setData({
@@ -227,7 +247,7 @@
                 }
               });
             }
-            // Save the imported path to IndexedDB
+            // Save the imported path to IndexedDB.
             updateDB(trackingCoordinates);
           } else {
             alert('Invalid data format in file.');
@@ -239,6 +259,12 @@
       };
       reader.readAsText(file);
     });
+
+    // ------------------ Debugging Helpers ------------------
+    // Check if the browser supports WebGL (required for MapLibre GL)
+    if (!maplibregl.supported()) {
+      alert("Your browser does not support WebGL, which is required to run this map.");
+    }
   </script>
 </body>
 </html>
