@@ -1,27 +1,265 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fullscreen Iframe</title>
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      width: 100%;
-      overflow: hidden;
-    }
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Tic Tac Toe</title>
+		<style>
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+			body {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				font-family: Arial, sans-serif;
+				background-color: #f0f0f0;
+				min-height: 100vh;
+				padding: 1vh;
+				overflow-x: hidden;
+			}
+			.board {
+				display: grid;
+				grid-template-columns: repeat(3, minmax(0px, min(30vw, 100px)));
+				gap: 0;
+				margin: 1vh 0;
+				max-width: 80vw;
+				border: 2px solid #333;
+			}
+			.cell {
+				width: 100%;
+				height: 0;
+				padding-bottom: 100%;
+				background-color: white;
+				border: 1px solid #333;
+				position: relative;
+				cursor: pointer;
+			}
+			.cell:hover {
+				background-color: #f5f5f5;
+			}
+			.cell::before {
+				content: attr(data-content);
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+				font-size: clamp(20px, 5vw, 32px);
+			}
+			#status {
+				font-size: clamp(14px, 3vw, 20px);
+				margin: 1vh 0;
+				text-align: center;
+				width: 80vw;
+				word-wrap: break-word;
+			}
+			h1 {
+				font-size: clamp(18px, 4vw, 28px);
+				margin: 1vh 0;
+				text-align: center;
+				width: 80vw;
+			}
+			#reset {
+				padding: 1vh 2vw;
+				font-size: clamp(12px, 2.5vw, 16px);
+				background-color: #4caf50;
+				color: white;
+				border: none;
+				border-radius: 3px;
+				cursor: pointer;
+				margin-top: 1vh;
+				max-width: 80vw;
+			}
+			#reset:hover {
+				background-color: #45a049;
+			}
+			.cell.selected {
+				background-color: #e3f2fd;
+				border: 1px solid #2196f3;
+			}
+			.cell.valid-move {
+				background-color: #e8f5e9;
+				border: 1px solid #4caf50;
+			}
+			.cell.winner {
+				border: 1px solid #333;
+			}
+			.cell.winner::before {
+				color: #2e7d32;
+				font-weight: bold;
+				text-shadow: 0 0 3px rgba(46, 125, 50, 0.3);
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Tic Tac Toe</h1>
+		<div id="status">Player X's turn (Place your piece)</div>
+		<div class="board" id="board">
+			<div class="cell" data-index="0"></div>
+			<div class="cell" data-index="1"></div>
+			<div class="cell" data-index="2"></div>
+			<div class="cell" data-index="3"></div>
+			<div class="cell" data-index="4"></div>
+			<div class="cell" data-index="5"></div>
+			<div class="cell" data-index="6"></div>
+			<div class="cell" data-index="7"></div>
+			<div class="cell" data-index="8"></div>
+		</div>
+		<button id="reset">Reset Game</button>
 
-    iframe {
-      border: none;
-      width: 100vw;
-      height: 100vh;
-      display: block;
-    }
-  </style>
-</head>
-<body>
-  <iframe src="https://kzmqdjpuzpa8pnk725q0.lite.vusercontent.net/" title="tiktik"></iframe>
-</body>
+		<script>
+			const board = document.getElementById("board");
+			const cells = document.querySelectorAll(".cell");
+			const status = document.getElementById("status");
+			const resetBtn = document.getElementById("reset");
+			let currentPlayer = "X";
+			let gameBoard = ["", "", "", "", "", "", "", "", ""];
+			let gameActive = true;
+			let piecesPlaced = { X: 0, O: 0 };
+			let selectedCell = null;
+			let isMovingPhase = false;
+
+			const winningCombinations = [
+				[0, 1, 2],
+				[3, 4, 5],
+				[6, 7, 8],
+				[0, 3, 6],
+				[1, 4, 7],
+				[2, 5, 8],
+				[0, 4, 8],
+				[2, 4, 6],
+			];
+
+			function handleCellClick(e) {
+				const cell = e.target;
+				const index = parseInt(cell.dataset.index);
+
+				if (!gameActive) return;
+
+				if (!isMovingPhase) {
+					// Placement phase
+					if (gameBoard[index] === "") {
+						if (piecesPlaced[currentPlayer] < 3) {
+							gameBoard[index] = currentPlayer;
+							cell.setAttribute("data-content", currentPlayer);
+							piecesPlaced[currentPlayer]++;
+
+							if (checkWin()) {
+								status.textContent = `Player ${currentPlayer} wins!`;
+								gameActive = false;
+								return;
+							}
+
+							if (piecesPlaced.X === 3 && piecesPlaced.O === 3) {
+								isMovingPhase = true;
+								// Switch to the opposite player of the last placement
+								currentPlayer = currentPlayer === "X" ? "O" : "X";
+								status.textContent = `Player ${currentPlayer}'s turn (Select a piece to move)`;
+							} else {
+								currentPlayer = currentPlayer === "X" ? "O" : "X";
+								status.textContent = `Player ${currentPlayer}'s turn (Place your piece)`;
+							}
+						}
+					}
+				} else {
+					// Moving phase
+					if (selectedCell === null) {
+						// Selecting piece to move
+						if (gameBoard[index] === currentPlayer) {
+							selectedCell = index;
+							cell.classList.add("selected");
+							showValidMoves();
+							status.textContent = `Select where to move your ${currentPlayer}`;
+						}
+					} else {
+						// Moving the selected piece
+						if (index !== selectedCell && gameBoard[index] === "") {
+							// Move the piece to any empty space
+							gameBoard[index] = currentPlayer;
+							gameBoard[selectedCell] = "";
+							cells[index].setAttribute("data-content", currentPlayer);
+							cells[selectedCell].setAttribute("data-content", "");
+
+							// Clear selection and valid moves
+							cells[selectedCell].classList.remove("selected");
+							clearValidMoves();
+							selectedCell = null;
+
+							if (checkWin()) {
+								status.textContent = `Player ${currentPlayer} wins!`;
+								gameActive = false;
+								return;
+							}
+
+							currentPlayer = currentPlayer === "X" ? "O" : "X";
+							status.textContent = `Player ${currentPlayer}'s turn (Select a piece to move)`;
+						} else if (gameBoard[index] === currentPlayer) {
+							// Change selection to another piece
+							cells[selectedCell].classList.remove("selected");
+							clearValidMoves();
+							selectedCell = index;
+							cell.classList.add("selected");
+							showValidMoves();
+						} else {
+							// Cancel selection
+							cells[selectedCell].classList.remove("selected");
+							clearValidMoves();
+							selectedCell = null;
+							status.textContent = `Player ${currentPlayer}'s turn (Select a piece to move)`;
+						}
+					}
+				}
+			}
+
+			function showValidMoves() {
+				// Show all empty cells as valid moves
+				cells.forEach((cell, index) => {
+					if (gameBoard[index] === "") {
+						cell.classList.add("valid-move");
+					}
+				});
+			}
+
+			function clearValidMoves() {
+				cells.forEach((cell) => cell.classList.remove("valid-move"));
+			}
+
+			function checkWin() {
+				return winningCombinations.some((combination) => {
+					const isWinning = combination.every((index) => {
+						return gameBoard[index] === currentPlayer;
+					});
+
+					if (isWinning) {
+						// Only highlight the winning pieces with green color
+						combination.forEach((index) => {
+							cells[index].classList.add("winner");
+						});
+						return true;
+					}
+					return false;
+				});
+			}
+
+			function resetGame() {
+				gameBoard = ["", "", "", "", "", "", "", "", ""];
+				gameActive = true;
+				currentPlayer = "X";
+				piecesPlaced = { X: 0, O: 0 };
+				isMovingPhase = false;
+				selectedCell = null;
+				status.textContent = "Player X's turn (Place your piece)";
+				cells.forEach((cell) => {
+					cell.setAttribute("data-content", "");
+					cell.classList.remove("selected", "valid-move", "winner");
+				});
+			}
+
+			cells.forEach((cell) => cell.addEventListener("click", handleCellClick));
+			resetBtn.addEventListener("click", resetGame);
+		</script>
+	</body>
 </html>
