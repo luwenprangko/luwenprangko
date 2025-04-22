@@ -1,795 +1,801 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tic Tac Toe - Adaptive AI</title>
-    <style>
-      * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
-      body {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        font-family: Arial, sans-serif;
-        background-color: #f0f0f0;
-        min-height: 100vh;
-        padding: 1vh;
-        overflow-x: hidden;
-      }
-      .board {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0px, min(30vw, 100px)));
-        gap: 0;
-        margin: 1vh 0;
-        max-width: 80vw;
-        border: 2px solid #333;
-      }
-      .cell {
-        width: 100%;
-        height: 0;
-        padding-bottom: 100%;
-        background-color: white;
-        border: 1px solid #333;
-        position: relative;
-        cursor: pointer;
-      }
-      .cell:hover {
-        background-color: #f5f5f5;
-      }
-      .cell::before {
-        content: attr(data-content);
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        font-size: clamp(20px, 5vw, 32px);
-      }
-      #status {
-        font-size: clamp(14px, 3vw, 20px);
-        margin: 1vh 0;
-        text-align: center;
-        width: 80vw;
-        word-wrap: break-word;
-      }
-      h1 {
-        font-size: clamp(18px, 4vw, 28px);
-        margin: 1vh 0;
-        text-align: center;
-        width: 80vw;
-      }
-      .buttons {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 10px;
-        margin-top: 1vh;
-        max-width: 80vw;
-      }
-      button {
-        padding: 1vh 2vw;
-        font-size: clamp(12px, 2.5vw, 16px);
-        background-color: #4caf50;
-        color: white;
-        border: none;
-        border-radius: 3px;
-        cursor: pointer;
-      }
-      button:hover {
-        background-color: #45a049;
-      }
-      #reset-learning {
-        background-color: #f44336;
-      }
-      #reset-learning:hover {
-        background-color: #d32f2f;
-      }
-      .cell.selected {
-        background-color: #e3f2fd;
-        border: 1px solid #2196f3;
-      }
-      .cell.winner {
-        border: 1px solid #333;
-      }
-      .cell.winner::before {
-        color: #2e7d32;
-        font-weight: bold;
-        text-shadow: 0 0 3px rgba(46, 125, 50, 0.3);
-      }
-      .stats {
-        margin-top: 2vh;
-        font-size: clamp(12px, 2.5vw, 16px);
-        text-align: center;
-        width: 80vw;
-      }
-      .ai-thinking {
-        animation: pulse 1.5s infinite;
-      }
-      @keyframes pulse {
-        0% {
-          opacity: 1;
-        }
-        50% {
-          opacity: 0.5;
-        }
-        100% {
-          opacity: 1;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <h1>Tic Tac Toe with Adaptive AI</h1>
-    <div id="status">Your turn (X)</div>
-    <div class="board" id="board">
-      <div class="cell" data-index="0"></div>
-      <div class="cell" data-index="1"></div>
-      <div class="cell" data-index="2"></div>
-      <div class="cell" data-index="3"></div>
-      <div class="cell" data-index="4"></div>
-      <div class="cell" data-index="5"></div>
-      <div class="cell" data-index="6"></div>
-      <div class="cell" data-index="7"></div>
-      <div class="cell" data-index="8"></div>
-    </div>
-    <div class="buttons">
-      <button id="reset">New Game</button>
-      <button id="reset-learning">Reset AI Learning</button>
-    </div>
-    <div class="stats">
-      <p id="game-stats">Games: 0 | Wins: 0 | Losses: 0 | Draws: 0</p>
-      <p id="ai-stats">AI Knowledge: 0 game patterns</p>
-    </div>
-
-    <script>
-      // Game elements
-      const board = document.getElementById("board");
-      const cells = document.querySelectorAll(".cell");
-      const status = document.getElementById("status");
-      const resetBtn = document.getElementById("reset");
-      const resetLearningBtn = document.getElementById("reset-learning");
-      const gameStatsEl = document.getElementById("game-stats");
-      const aiStatsEl = document.getElementById("ai-stats");
-
-      // Game state variables
-      let gameBoard = ["", "", "", "", "", "", "", "", ""];
-      let gameActive = true;
-      let humanPlayer = "X";
-      let aiPlayer = "O";
-      let currentPlayer = humanPlayer;
-      let piecesPlaced = { X: 0, O: 0 };
-      let isMovingPhase = false;
-      let selectedCell = null;
-      let aiThinking = false;
-      let currentGameMoves = [];
-      let isHumanTurn = true;
-
-      // Track piece placement order (from index.html)
-      let piecePlacementOrder = { X: [], O: [] };
-      let currentMoveIndex = { X: 0, O: 0 };
-
-      // Game statistics
-      let stats = {
-        games: 0,
-        wins: 0,
-        losses: 0,
-        draws: 0,
-      };
-
-      // AI learning variables
-      let boardStates = {};
-      let winningMoves = {};
-      let losingMoves = {};
-
-      // Winning combinations
-      const winningCombinations = [
-        [0, 1, 2],
-        [3, 4, 5],
-        [6, 7, 8], // Rows
-        [0, 3, 6],
-        [1, 4, 7],
-        [2, 5, 8], // Columns
-        [0, 4, 8],
-        [2, 4, 6], // Diagonals
-      ];
-
-      // Initialize from local storage
-      function initFromStorage() {
-        const storedBoardStates = localStorage.getItem("tictactoe_boardStates");
-        const storedWinningMoves = localStorage.getItem(
-          "tictactoe_winningMoves"
-        );
-        const storedLosingMoves = localStorage.getItem("tictactoe_losingMoves");
-        const storedStats = localStorage.getItem("tictactoe_stats");
-
-        if (storedBoardStates) boardStates = JSON.parse(storedBoardStates);
-        if (storedWinningMoves) winningMoves = JSON.parse(storedWinningMoves);
-        if (storedLosingMoves) losingMoves = JSON.parse(storedLosingMoves);
-        if (storedStats) stats = JSON.parse(storedStats);
-
-        updateStatsDisplay();
-      }
-
-      // Save to local storage
-      function saveToStorage() {
-        localStorage.setItem(
-          "tictactoe_boardStates",
-          JSON.stringify(boardStates)
-        );
-        localStorage.setItem(
-          "tictactoe_winningMoves",
-          JSON.stringify(winningMoves)
-        );
-        localStorage.setItem(
-          "tictactoe_losingMoves",
-          JSON.stringify(losingMoves)
-        );
-        localStorage.setItem("tictactoe_stats", JSON.stringify(stats));
-        updateStatsDisplay();
-      }
-
-      // Update stats display
-      function updateStatsDisplay() {
-        gameStatsEl.textContent = `Games: ${stats.games} | Wins: ${stats.wins} | Losses: ${stats.losses} | Draws: ${stats.draws}`;
-
-        // Count the total number of learned patterns
-        const totalPatterns =
-          Object.keys(boardStates).length +
-          Object.keys(winningMoves).length +
-          Object.keys(losingMoves).length;
-
-        aiStatsEl.textContent = `AI Knowledge: ${totalPatterns} game patterns`;
-      }
-
-      // Board state to string for storage
-      function boardToString(board) {
-        return board.join("");
-      }
-
-      // Handle cell click
-      function handleCellClick(e) {
-        if (!gameActive || !isHumanTurn || aiThinking) return;
-
-        const cell = e.target;
-        const index = parseInt(cell.dataset.index);
-
-        if (!isMovingPhase) {
-          // Placement phase
-          if (gameBoard[index] === "") {
-            if (piecesPlaced[humanPlayer] < 3) {
-              gameBoard[index] = humanPlayer;
-              cell.setAttribute("data-content", humanPlayer);
-              piecesPlaced[humanPlayer]++;
-              piecePlacementOrder[humanPlayer].push(index);
-
-              // Record this move
-              currentGameMoves.push({
-                board: [...gameBoard],
-                move: index,
-                player: humanPlayer,
-              });
-
-              // Check for win
-              if (checkWin(humanPlayer)) {
-                endGame(`You win!`, "win");
-                return;
-              }
-
-              // If human placed all 3 pieces and AI also placed all 3 pieces
-              if (
-                piecesPlaced[humanPlayer] === 3 &&
-                piecesPlaced[aiPlayer] === 3
-              ) {
-                isMovingPhase = true;
-                // Here we'll handle the moving phase differently later
-              } else {
-                // AI's turn to place a piece
-                isHumanTurn = false;
-                status.textContent = "AI is thinking...";
-                status.classList.add("ai-thinking");
-
-                aiThinking = true;
-                setTimeout(makeAIPlacementMove, 600);
-              }
-            }
-          }
-        } else {
-          // Moving phase (index.html style)
-          if (gameBoard[index] === "" && selectedCell !== null) {
-            // Move the piece to the empty cell
-            gameBoard[index] = humanPlayer;
-            gameBoard[selectedCell] = "";
-            cells[index].setAttribute("data-content", humanPlayer);
-            cells[selectedCell].setAttribute("data-content", "");
-
-            // Update the placement order array
-            const moveIndex =
-              piecePlacementOrder[humanPlayer].indexOf(selectedCell);
-            piecePlacementOrder[humanPlayer][moveIndex] = index;
-
-            // Record this move
-            currentGameMoves.push({
-              board: [...gameBoard],
-              move: index,
-              player: humanPlayer,
-              fromIndex: selectedCell,
-            });
-
-            // Clear selection
-            cells[selectedCell].classList.remove("selected");
-            selectedCell = null;
-
-            // Check for win
-            if (checkWin(humanPlayer)) {
-              endGame(`You win!`, "win");
-              return;
-            }
-
-            // AI's turn to move a piece
-            isHumanTurn = false;
-            status.textContent = "AI is thinking...";
-            status.classList.add("ai-thinking");
-
-            aiThinking = true;
-            setTimeout(makeAIMoveMove, 600);
-          }
-        }
-      }
-
-      // AI places a piece
-      function makeAIPlacementMove() {
-        // Determine the move using the adaptive AI
-        const move = makeAdaptiveMove();
-
-        // Apply the AI move
-        gameBoard[move] = aiPlayer;
-        cells[move].setAttribute("data-content", aiPlayer);
-        piecesPlaced[aiPlayer]++;
-        piecePlacementOrder[aiPlayer].push(move);
-
-        currentGameMoves.push({
-          board: [...gameBoard],
-          move: move,
-          player: aiPlayer,
-        });
-
-        // Check for win
-        if (checkWin(aiPlayer)) {
-          endGame("AI wins!", "loss");
-          return;
-        }
-
-        // If both players have placed all 3 pieces
-        if (piecesPlaced[humanPlayer] === 3 && piecesPlaced[aiPlayer] === 3) {
-          isMovingPhase = true;
-          // Switch to moving phase - select the first human piece
-          currentMoveIndex[humanPlayer] = 0;
-          selectedCell =
-            piecePlacementOrder[humanPlayer][currentMoveIndex[humanPlayer]];
-          cells[selectedCell].classList.add("selected");
-
-          isHumanTurn = true;
-          status.textContent = "Your turn - Click an empty cell to move";
-          status.classList.remove("ai-thinking");
-          aiThinking = false;
-          return;
-        }
-
-        // Human's turn
-        isHumanTurn = true;
-        status.textContent = "Your turn to place a piece";
-        status.classList.remove("ai-thinking");
-        aiThinking = false;
-      }
-
-      // AI moves a piece (updated for index.html style)
-      function makeAIMoveMove() {
-        // Get the current AI piece to move
-        const currentAiPiece =
-          piecePlacementOrder[aiPlayer][currentMoveIndex[aiPlayer]];
-
-        // Find all empty cells
-        const emptyCells = [];
-        for (let i = 0; i < gameBoard.length; i++) {
-          if (gameBoard[i] === "") {
-            emptyCells.push(i);
-          }
-        }
-
-        // Try each empty cell to find the best move
-        let bestScore = -Infinity;
-        let bestCell = null;
-
-        for (const cell of emptyCells) {
-          // Try this move
-          const originalBoard = [...gameBoard];
-          gameBoard[cell] = aiPlayer;
-          gameBoard[currentAiPiece] = "";
-
-          // Score this move
-          let score = evaluateMove(currentAiPiece, cell);
-
-          // Update best move if better
-          if (score > bestScore) {
-            bestScore = score;
-            bestCell = cell;
-          }
-
-          // Restore board
-          gameBoard = originalBoard;
-        }
-
-        // If no good move found, use random
-        if (bestCell === null && emptyCells.length > 0) {
-          bestCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-        }
-
-        // Make the move
-        gameBoard[bestCell] = aiPlayer;
-        gameBoard[currentAiPiece] = "";
-        cells[bestCell].setAttribute("data-content", aiPlayer);
-        cells[currentAiPiece].setAttribute("data-content", "");
-
-        // Update placement order
-        const moveIndex = piecePlacementOrder[aiPlayer].indexOf(currentAiPiece);
-        piecePlacementOrder[aiPlayer][moveIndex] = bestCell;
-
-        currentGameMoves.push({
-          board: [...gameBoard],
-          move: bestCell,
-          player: aiPlayer,
-          fromIndex: currentAiPiece,
-        });
-
-        // Check for win
-        if (checkWin(aiPlayer)) {
-          endGame("AI wins!", "loss");
-          return;
-        }
-
-        // Move to the next index in the cycle for AI
-        currentMoveIndex[aiPlayer]++;
-        if (currentMoveIndex[aiPlayer] >= 3) {
-          currentMoveIndex[aiPlayer] = 0;
-        }
-
-        // Human's turn - select the next piece automatically
-        currentMoveIndex[humanPlayer]++;
-        if (currentMoveIndex[humanPlayer] >= 3) {
-          currentMoveIndex[humanPlayer] = 0;
-        }
-
-        selectedCell =
-          piecePlacementOrder[humanPlayer][currentMoveIndex[humanPlayer]];
-        cells[selectedCell].classList.add("selected");
-
-        isHumanTurn = true;
-        status.textContent = "Your turn - Click an empty cell to move";
-        status.classList.remove("ai-thinking");
-        aiThinking = false;
-      }
-
-      // Evaluate a potential move
-      function evaluateMove(fromPiece, toCell) {
-        let score = 0;
-
-        // Check if this is a winning move
-        if (checkWinCondition(gameBoard, aiPlayer)) {
-          return 100; // Immediate winning move gets highest priority
-        }
-
-        // Check if this prevents a human win
-        const originalCell = gameBoard[toCell];
-        gameBoard[toCell] = ""; // Temporarily empty to check
-
-        // Find human pieces
-        const humanPieces = [];
-        for (let i = 0; i < gameBoard.length; i++) {
-          if (gameBoard[i] === humanPlayer) {
-            humanPieces.push(i);
-          }
-        }
-
-        // Check if human has any winning moves that we're blocking
-        for (const humanPiece of humanPieces) {
-          const originalHumanPos = gameBoard[humanPiece];
-          gameBoard[humanPiece] = "";
-
-          if (gameBoard[toCell] === "") {
-            gameBoard[toCell] = humanPlayer;
-            if (checkWinCondition(gameBoard, humanPlayer)) {
-              score += 50; // Blocking a win is good
-            }
-            gameBoard[toCell] = ""; // Reset
-          }
-
-          gameBoard[humanPiece] = originalHumanPos; // Reset
-        }
-
-        // Use learned patterns from previous games
-        const boardStateStr = boardToString(gameBoard);
-        if (
-          winningMoves[boardStateStr] &&
-          winningMoves[boardStateStr].includes(toCell)
-        ) {
-          score += 30;
-        }
-        if (
-          losingMoves[boardStateStr] &&
-          losingMoves[boardStateStr].includes(toCell)
-        ) {
-          score -= 30;
-        }
-
-        // Strategic positioning
-        if (toCell === 4) score += 3; // Center is good
-        if ([0, 2, 6, 8].includes(toCell)) score += 2; // Corners are good
-
-        // Prioritize forming potential winning lines
-        for (const combo of winningCombinations) {
-          let aiCount = 0;
-          let emptyCount = 0;
-
-          for (const idx of combo) {
-            if (gameBoard[idx] === aiPlayer) aiCount++;
-            if (gameBoard[idx] === "") emptyCount++;
-          }
-
-          if (aiCount === 2 && emptyCount === 1) {
-            score += 20; // Creating a potential win next turn
-          }
-        }
-
-        // Add some randomness to avoid predictability
-        score += Math.random() * 0.5;
-
-        // Consider the piece we're moving from - avoid moving from strategic positions unless necessary
-        if (fromPiece === 4) score -= 1; // Slight penalty for moving from center
-        if ([0, 2, 6, 8].includes(fromPiece)) score -= 0.5; // Small penalty for moving from corners
-
-        return score;
-      }
-
-      // Adaptive AI for placing pieces
-      function makeAdaptiveMove() {
-        const currentBoardState = boardToString(gameBoard);
-
-        // First try to find a winning move from learned patterns
-        if (winningMoves[currentBoardState]) {
-          const goodMoves = winningMoves[currentBoardState].filter(
-            (m) => gameBoard[m] === ""
-          );
-          if (goodMoves.length > 0) {
-            return goodMoves[Math.floor(Math.random() * goodMoves.length)];
-          }
-        }
-
-        // Then try to avoid losing moves
-        if (losingMoves[currentBoardState]) {
-          const availableMoves = gameBoard
-            .map((cell, index) => (cell === "" ? index : null))
-            .filter((index) => index !== null);
-
-          const safeMoves = availableMoves.filter(
-            (move) => !losingMoves[currentBoardState].includes(move)
-          );
-
-          if (safeMoves.length > 0) {
-            return safeMoves[Math.floor(Math.random() * safeMoves.length)];
-          }
-        }
-
-        // Check if AI can win
-        const winMove = findWinningMove(aiPlayer);
-        if (winMove !== null) return winMove;
-
-        // Check if need to block human
-        const blockMove = findWinningMove(humanPlayer);
-        if (blockMove !== null) return blockMove;
-
-        // Take center if available
-        if (gameBoard[4] === "") return 4;
-
-        // Take corners
-        const corners = [0, 2, 6, 8].filter((i) => gameBoard[i] === "");
-        if (corners.length > 0) {
-          return corners[Math.floor(Math.random() * corners.length)];
-        }
-
-        // Take any available spot
-        const availableMoves = gameBoard
-          .map((cell, index) => (cell === "" ? index : null))
-          .filter((index) => index !== null);
-        return availableMoves[
-          Math.floor(Math.random() * availableMoves.length)
-        ];
-      }
-
-      // Find winning move for a player
-      function findWinningMove(player) {
-        for (let i = 0; i < gameBoard.length; i++) {
-          if (gameBoard[i] === "") {
-            // Try this move
-            gameBoard[i] = player;
-
-            // Check if it's a winning move
-            const isWinning = winningCombinations.some((combo) =>
-              combo.every((idx) => gameBoard[idx] === player)
-            );
-
-            // Undo the move
-            gameBoard[i] = "";
-
-            if (isWinning) return i;
-          }
-        }
-        return null;
-      }
-
-      // Check win condition for UI updates
-      function checkWin(player) {
-        return winningCombinations.some((combination) => {
-          const isWinning = combination.every((index) => {
-            return gameBoard[index] === player;
-          });
-
-          if (isWinning) {
-            // Highlight the winning pieces
-            combination.forEach((index) => {
-              cells[index].classList.add("winner");
-            });
-            return true;
-          }
-          return false;
-        });
-      }
-
-      // Check win condition without UI updates
-      function checkWinCondition(board, player) {
-        return winningCombinations.some((combination) => {
-          return combination.every((index) => board[index] === player);
-        });
-      }
-
-      // Check for draw
-      function checkDraw() {
-        return (
-          gameBoard.every((cell) => cell !== "") &&
-          !checkWin(humanPlayer) &&
-          !checkWin(aiPlayer)
-        );
-      }
-
-      // End game
-      function endGame(message, result) {
-        status.textContent = message;
-        status.classList.remove("ai-thinking");
-        gameActive = false;
-
-        // Update stats
-        stats.games++;
-
-        if (result === "win") {
-          stats.wins++;
-          // Learn from this game - Human's winning moves are AI's losing moves
-          learnFromGame("human-win");
-        } else if (result === "loss") {
-          stats.losses++;
-          // Learn from this game - AI's winning moves
-          learnFromGame("ai-win");
-        } else {
-          stats.draws++;
-          // Learn from draw
-          learnFromGame("draw");
-        }
-
-        // Save to storage
-        saveToStorage();
-      }
-
-      // Learn from the completed game
-      function learnFromGame(result) {
-        currentGameMoves.forEach((moveData) => {
-          const boardState = boardToString(
-            moveData.board.map((c) => (c === "" ? "" : c))
-          );
-
-          // Record this board state
-          if (!boardStates[boardState]) {
-            boardStates[boardState] = [];
-          }
-
-          if (!boardStates[boardState].includes(moveData.move)) {
-            boardStates[boardState].push(moveData.move);
-          }
-
-          // Add more weight to the final moves that led to victory or defeat
-          const isFinalMove =
-            currentGameMoves.indexOf(moveData) >= currentGameMoves.length - 6;
-
-          if (result === "ai-win" && moveData.player === aiPlayer) {
-            // AI winning moves
-            if (!winningMoves[boardState]) {
-              winningMoves[boardState] = [];
-            }
-            if (!winningMoves[boardState].includes(moveData.move)) {
-              winningMoves[boardState].push(moveData.move);
-              // Give extra weight to final winning moves
-              if (isFinalMove) {
-                winningMoves[boardState].push(moveData.move);
-              }
-            }
-          } else if (result === "human-win" && moveData.player === aiPlayer) {
-            // AI losing moves
-            if (!losingMoves[boardState]) {
-              losingMoves[boardState] = [];
-            }
-            if (!losingMoves[boardState].includes(moveData.move)) {
-              losingMoves[boardState].push(moveData.move);
-              // Give extra weight to final losing moves
-              if (isFinalMove) {
-                losingMoves[boardState].push(moveData.move);
-              }
-            }
-          }
-          // For draws, we can learn but with less weight
-          else if (result === "draw" && moveData.player === aiPlayer) {
-            // Record but don't give special weight
-            if (!boardStates[boardState]) {
-              boardStates[boardState] = [];
-            }
-            if (!boardStates[boardState].includes(moveData.move)) {
-              boardStates[boardState].push(moveData.move);
-            }
-          }
-        });
-      }
-
-      // Reset the game
-      function resetGame() {
-        gameBoard = ["", "", "", "", "", "", "", "", ""];
-        gameActive = true;
-        isHumanTurn = true;
-        isMovingPhase = false;
-        currentPlayer = humanPlayer;
-        piecesPlaced = { X: 0, O: 0 };
-        selectedCell = null;
-        currentGameMoves = [];
-        aiThinking = false;
-        piecePlacementOrder = { X: [], O: [] };
-        currentMoveIndex = { X: 0, O: 0 };
-        status.textContent = "Your turn to place a piece";
-        status.classList.remove("ai-thinking");
-
-        cells.forEach((cell) => {
-          cell.setAttribute("data-content", "");
-          cell.classList.remove("winner", "selected");
-        });
-      }
-
-      // Reset AI learning
-      function resetLearning() {
-        if (confirm("Are you sure you want to reset all AI learning data?")) {
-          boardStates = {};
-          winningMoves = {};
-          losingMoves = {};
-          stats = { games: 0, wins: 0, losses: 0, draws: 0 };
-          saveToStorage();
-          alert("AI learning data has been reset.");
-        }
-      }
-
-      // Event listeners
-      cells.forEach((cell) => cell.addEventListener("click", handleCellClick));
-      resetBtn.addEventListener("click", resetGame);
-      resetLearningBtn.addEventListener("click", resetLearning);
-
-      // Initialize from storage and start game
-      initFromStorage();
-    </script>
-  </body>
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Tic Tac Toe - Adaptive AI</title>
+		<style>
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+			body {
+				margin: 0;
+				padding: 0;
+			}
+			.main {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				font-family: Arial, sans-serif;
+				background-color: #f0f0f0;
+				min-height: 100vh;
+				padding: 1vh;
+				overflow-x: hidden;
+			}
+			.board {
+				display: grid;
+				grid-template-columns: repeat(3, minmax(0px, min(30vw, 100px)));
+				gap: 0;
+				margin: 1vh 0;
+				max-width: 80vw;
+				border: 2px solid #333;
+			}
+			.cell {
+				width: 100%;
+				height: 0;
+				padding-bottom: 100%;
+				background-color: white;
+				border: 1px solid #333;
+				position: relative;
+				cursor: pointer;
+			}
+			.cell:hover {
+				background-color: #f5f5f5;
+			}
+			.cell::before {
+				content: attr(data-content);
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+				font-size: clamp(20px, 5vw, 32px);
+			}
+			#status {
+				font-size: clamp(14px, 3vw, 20px);
+				margin: 1vh 0;
+				text-align: center;
+				width: 80vw;
+				word-wrap: break-word;
+			}
+			h1 {
+				font-size: clamp(18px, 4vw, 28px);
+				margin: 1vh 0;
+				text-align: center;
+				width: 80vw;
+			}
+			.buttons {
+				display: flex;
+				flex-wrap: wrap;
+				justify-content: center;
+				gap: 10px;
+				margin-top: 1vh;
+				max-width: 80vw;
+			}
+			button {
+				padding: 1vh 2vw;
+				font-size: clamp(12px, 2.5vw, 16px);
+				background-color: #4caf50;
+				color: white;
+				border: none;
+				border-radius: 3px;
+				cursor: pointer;
+			}
+			button:hover {
+				background-color: #45a049;
+			}
+			#reset-learning {
+				background-color: #f44336;
+			}
+			#reset-learning:hover {
+				background-color: #d32f2f;
+			}
+			.cell.selected {
+				color: red;
+			}
+			.cell.winner {
+				border: 1px solid #333;
+			}
+			.cell.winner::before {
+				color: #2e7d32;
+				font-weight: bold;
+				text-shadow: 0 0 3px rgba(46, 125, 50, 0.3);
+			}
+			.stats {
+				margin-top: 2vh;
+				font-size: clamp(12px, 2.5vw, 16px);
+				text-align: center;
+				width: 80vw;
+			}
+			.ai-thinking {
+				animation: pulse 1.5s infinite;
+			}
+			@keyframes pulse {
+				0% {
+					opacity: 1;
+				}
+				50% {
+					opacity: 0.5;
+				}
+				100% {
+					opacity: 1;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<div class="main">
+			<h1>Tic Tac Toe with Adaptive AI</h1>
+			<div id="status">Your turn (X)</div>
+			<div class="board" id="board">
+				<div class="cell" data-index="0"></div>
+				<div class="cell" data-index="1"></div>
+				<div class="cell" data-index="2"></div>
+				<div class="cell" data-index="3"></div>
+				<div class="cell" data-index="4"></div>
+				<div class="cell" data-index="5"></div>
+				<div class="cell" data-index="6"></div>
+				<div class="cell" data-index="7"></div>
+				<div class="cell" data-index="8"></div>
+			</div>
+			<div class="buttons">
+				<button id="reset">New Game</button>
+				<button id="reset-learning">Reset AI Learning</button>
+			</div>
+			<div class="stats">
+				<p id="game-stats">Games: 0 | Wins: 0 | Losses: 0 | Draws: 0</p>
+				<p id="ai-stats">AI Knowledge: 0 game patterns</p>
+			</div>
+		</div>
+
+		<script>
+			// Game elements
+			const board = document.getElementById("board");
+			const cells = document.querySelectorAll(".cell");
+			const status = document.getElementById("status");
+			const resetBtn = document.getElementById("reset");
+			const resetLearningBtn = document.getElementById("reset-learning");
+			const gameStatsEl = document.getElementById("game-stats");
+			const aiStatsEl = document.getElementById("ai-stats");
+
+			// Game state variables
+			let gameBoard = ["", "", "", "", "", "", "", "", ""];
+			let gameActive = true;
+			let humanPlayer = "X";
+			let aiPlayer = "O";
+			let currentPlayer = humanPlayer;
+			let piecesPlaced = { X: 0, O: 0 };
+			let isMovingPhase = false;
+			let selectedCell = null;
+			let aiThinking = false;
+			let currentGameMoves = [];
+			let isHumanTurn = true;
+
+			// Track piece placement order (from index.html)
+			let piecePlacementOrder = { X: [], O: [] };
+			let currentMoveIndex = { X: 0, O: 0 };
+
+			// Game statistics
+			let stats = {
+				games: 0,
+				wins: 0,
+				losses: 0,
+				draws: 0,
+			};
+
+			// AI learning variables
+			let boardStates = {};
+			let winningMoves = {};
+			let losingMoves = {};
+
+			// Winning combinations
+			const winningCombinations = [
+				[0, 1, 2],
+				[3, 4, 5],
+				[6, 7, 8], // Rows
+				[0, 3, 6],
+				[1, 4, 7],
+				[2, 5, 8], // Columns
+				[0, 4, 8],
+				[2, 4, 6], // Diagonals
+			];
+
+			// Initialize from local storage
+			function initFromStorage() {
+				const storedBoardStates = localStorage.getItem("tictactoe_boardStates");
+				const storedWinningMoves = localStorage.getItem(
+					"tictactoe_winningMoves"
+				);
+				const storedLosingMoves = localStorage.getItem("tictactoe_losingMoves");
+				const storedStats = localStorage.getItem("tictactoe_stats");
+
+				if (storedBoardStates) boardStates = JSON.parse(storedBoardStates);
+				if (storedWinningMoves) winningMoves = JSON.parse(storedWinningMoves);
+				if (storedLosingMoves) losingMoves = JSON.parse(storedLosingMoves);
+				if (storedStats) stats = JSON.parse(storedStats);
+
+				updateStatsDisplay();
+			}
+
+			// Save to local storage
+			function saveToStorage() {
+				localStorage.setItem(
+					"tictactoe_boardStates",
+					JSON.stringify(boardStates)
+				);
+				localStorage.setItem(
+					"tictactoe_winningMoves",
+					JSON.stringify(winningMoves)
+				);
+				localStorage.setItem(
+					"tictactoe_losingMoves",
+					JSON.stringify(losingMoves)
+				);
+				localStorage.setItem("tictactoe_stats", JSON.stringify(stats));
+				updateStatsDisplay();
+			}
+
+			// Update stats display
+			function updateStatsDisplay() {
+				gameStatsEl.textContent = `Games: ${stats.games} | Wins: ${stats.wins} | Losses: ${stats.losses} | Draws: ${stats.draws}`;
+
+				// Count the total number of learned patterns
+				const totalPatterns =
+					Object.keys(boardStates).length +
+					Object.keys(winningMoves).length +
+					Object.keys(losingMoves).length;
+
+				aiStatsEl.textContent = `AI Knowledge: ${totalPatterns} game patterns`;
+			}
+
+			// Board state to string for storage
+			function boardToString(board) {
+				return board.join("");
+			}
+
+			// Handle cell click
+			function handleCellClick(e) {
+				if (!gameActive || !isHumanTurn || aiThinking) return;
+
+				const cell = e.target;
+				const index = parseInt(cell.dataset.index);
+
+				if (!isMovingPhase) {
+					// Placement phase
+					if (gameBoard[index] === "") {
+						if (piecesPlaced[humanPlayer] < 3) {
+							gameBoard[index] = humanPlayer;
+							cell.setAttribute("data-content", humanPlayer);
+							piecesPlaced[humanPlayer]++;
+							piecePlacementOrder[humanPlayer].push(index);
+
+							// Record this move
+							currentGameMoves.push({
+								board: [...gameBoard],
+								move: index,
+								player: humanPlayer,
+							});
+
+							// Check for win
+							if (checkWin(humanPlayer)) {
+								endGame(`You win!`, "win");
+								return;
+							}
+
+							// If human placed all 3 pieces and AI also placed all 3 pieces
+							if (
+								piecesPlaced[humanPlayer] === 3 &&
+								piecesPlaced[aiPlayer] === 3
+							) {
+								isMovingPhase = true;
+								// Here we'll handle the moving phase differently later
+							} else {
+								// AI's turn to place a piece
+								isHumanTurn = false;
+								status.textContent = "AI is thinking...";
+								status.classList.add("ai-thinking");
+
+								aiThinking = true;
+								setTimeout(makeAIPlacementMove, 600);
+							}
+						}
+					}
+				} else {
+					// Moving phase (index.html style)
+					if (gameBoard[index] === "" && selectedCell !== null) {
+						// Move the piece to the empty cell
+						gameBoard[index] = humanPlayer;
+						gameBoard[selectedCell] = "";
+						cells[index].setAttribute("data-content", humanPlayer);
+						cells[selectedCell].setAttribute("data-content", "");
+
+						// Update the placement order array
+						const moveIndex =
+							piecePlacementOrder[humanPlayer].indexOf(selectedCell);
+						piecePlacementOrder[humanPlayer][moveIndex] = index;
+
+						// Record this move
+						currentGameMoves.push({
+							board: [...gameBoard],
+							move: index,
+							player: humanPlayer,
+							fromIndex: selectedCell,
+						});
+
+						// Clear selection
+						cells[selectedCell].classList.remove("selected");
+						selectedCell = null;
+
+						// Check for win
+						if (checkWin(humanPlayer)) {
+							endGame(`You win!`, "win");
+							return;
+						}
+
+						// AI's turn to move a piece
+						isHumanTurn = false;
+						status.textContent = "AI is thinking...";
+						status.classList.add("ai-thinking");
+
+						aiThinking = true;
+						setTimeout(makeAIMoveMove, 600);
+					}
+				}
+			}
+
+			// AI places a piece
+			function makeAIPlacementMove() {
+				// Determine the move using the adaptive AI
+				const move = makeAdaptiveMove();
+
+				// Apply the AI move
+				gameBoard[move] = aiPlayer;
+				cells[move].setAttribute("data-content", aiPlayer);
+				piecesPlaced[aiPlayer]++;
+				piecePlacementOrder[aiPlayer].push(move);
+
+				currentGameMoves.push({
+					board: [...gameBoard],
+					move: move,
+					player: aiPlayer,
+				});
+
+				// Check for win
+				if (checkWin(aiPlayer)) {
+					endGame("AI wins!", "loss");
+					return;
+				}
+
+				// If both players have placed all 3 pieces
+				if (piecesPlaced[humanPlayer] === 3 && piecesPlaced[aiPlayer] === 3) {
+					isMovingPhase = true;
+					// Switch to moving phase - select the first human piece
+					currentMoveIndex[humanPlayer] = 0;
+					selectedCell =
+						piecePlacementOrder[humanPlayer][currentMoveIndex[humanPlayer]];
+					cells[selectedCell].classList.add("selected");
+
+					isHumanTurn = true;
+					status.textContent = "Your turn - Click an empty cell to move";
+					status.classList.remove("ai-thinking");
+					aiThinking = false;
+					return;
+				}
+
+				// Human's turn
+				isHumanTurn = true;
+				status.textContent = "Your turn to place a piece";
+				status.classList.remove("ai-thinking");
+				aiThinking = false;
+			}
+
+			// AI moves a piece (updated for index.html style)
+			function makeAIMoveMove() {
+				// Get the current AI piece to move
+				const currentAiPiece =
+					piecePlacementOrder[aiPlayer][currentMoveIndex[aiPlayer]];
+
+				// Find all empty cells
+				const emptyCells = [];
+				for (let i = 0; i < gameBoard.length; i++) {
+					if (gameBoard[i] === "") {
+						emptyCells.push(i);
+					}
+				}
+
+				// Try each empty cell to find the best move
+				let bestScore = -Infinity;
+				let bestCell = null;
+
+				for (const cell of emptyCells) {
+					// Try this move
+					const originalBoard = [...gameBoard];
+					gameBoard[cell] = aiPlayer;
+					gameBoard[currentAiPiece] = "";
+
+					// Score this move
+					let score = evaluateMove(currentAiPiece, cell);
+
+					// Update best move if better
+					if (score > bestScore) {
+						bestScore = score;
+						bestCell = cell;
+					}
+
+					// Restore board
+					gameBoard = originalBoard;
+				}
+
+				// If no good move found, use random
+				if (bestCell === null && emptyCells.length > 0) {
+					bestCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+				}
+
+				// Make the move
+				gameBoard[bestCell] = aiPlayer;
+				gameBoard[currentAiPiece] = "";
+				cells[bestCell].setAttribute("data-content", aiPlayer);
+				cells[currentAiPiece].setAttribute("data-content", "");
+
+				// Update placement order
+				const moveIndex = piecePlacementOrder[aiPlayer].indexOf(currentAiPiece);
+				piecePlacementOrder[aiPlayer][moveIndex] = bestCell;
+
+				currentGameMoves.push({
+					board: [...gameBoard],
+					move: bestCell,
+					player: aiPlayer,
+					fromIndex: currentAiPiece,
+				});
+
+				// Check for win
+				if (checkWin(aiPlayer)) {
+					endGame("AI wins!", "loss");
+					return;
+				}
+
+				// Move to the next index in the cycle for AI
+				currentMoveIndex[aiPlayer]++;
+				if (currentMoveIndex[aiPlayer] >= 3) {
+					currentMoveIndex[aiPlayer] = 0;
+				}
+
+				// Human's turn - select the next piece automatically
+				currentMoveIndex[humanPlayer]++;
+				if (currentMoveIndex[humanPlayer] >= 3) {
+					currentMoveIndex[humanPlayer] = 0;
+				}
+
+				selectedCell =
+					piecePlacementOrder[humanPlayer][currentMoveIndex[humanPlayer]];
+				cells[selectedCell].classList.add("selected");
+
+				isHumanTurn = true;
+				status.textContent = "Your turn - Click an empty cell to move";
+				status.classList.remove("ai-thinking");
+				aiThinking = false;
+			}
+
+			// Evaluate a potential move
+			function evaluateMove(fromPiece, toCell) {
+				let score = 0;
+
+				// Check if this is a winning move
+				if (checkWinCondition(gameBoard, aiPlayer)) {
+					return 100; // Immediate winning move gets highest priority
+				}
+
+				// Check if this prevents a human win
+				const originalCell = gameBoard[toCell];
+				gameBoard[toCell] = ""; // Temporarily empty to check
+
+				// Find human pieces
+				const humanPieces = [];
+				for (let i = 0; i < gameBoard.length; i++) {
+					if (gameBoard[i] === humanPlayer) {
+						humanPieces.push(i);
+					}
+				}
+
+				// Check if human has any winning moves that we're blocking
+				for (const humanPiece of humanPieces) {
+					const originalHumanPos = gameBoard[humanPiece];
+					gameBoard[humanPiece] = "";
+
+					if (gameBoard[toCell] === "") {
+						gameBoard[toCell] = humanPlayer;
+						if (checkWinCondition(gameBoard, humanPlayer)) {
+							score += 50; // Blocking a win is good
+						}
+						gameBoard[toCell] = ""; // Reset
+					}
+
+					gameBoard[humanPiece] = originalHumanPos; // Reset
+				}
+
+				// Use learned patterns from previous games
+				const boardStateStr = boardToString(gameBoard);
+				if (
+					winningMoves[boardStateStr] &&
+					winningMoves[boardStateStr].includes(toCell)
+				) {
+					score += 30;
+				}
+				if (
+					losingMoves[boardStateStr] &&
+					losingMoves[boardStateStr].includes(toCell)
+				) {
+					score -= 30;
+				}
+
+				// Strategic positioning
+				if (toCell === 4) score += 3; // Center is good
+				if ([0, 2, 6, 8].includes(toCell)) score += 2; // Corners are good
+
+				// Prioritize forming potential winning lines
+				for (const combo of winningCombinations) {
+					let aiCount = 0;
+					let emptyCount = 0;
+
+					for (const idx of combo) {
+						if (gameBoard[idx] === aiPlayer) aiCount++;
+						if (gameBoard[idx] === "") emptyCount++;
+					}
+
+					if (aiCount === 2 && emptyCount === 1) {
+						score += 20; // Creating a potential win next turn
+					}
+				}
+
+				// Add some randomness to avoid predictability
+				score += Math.random() * 0.5;
+
+				// Consider the piece we're moving from - avoid moving from strategic positions unless necessary
+				if (fromPiece === 4) score -= 1; // Slight penalty for moving from center
+				if ([0, 2, 6, 8].includes(fromPiece)) score -= 0.5; // Small penalty for moving from corners
+
+				return score;
+			}
+
+			// Adaptive AI for placing pieces
+			function makeAdaptiveMove() {
+				const currentBoardState = boardToString(gameBoard);
+
+				// First try to find a winning move from learned patterns
+				if (winningMoves[currentBoardState]) {
+					const goodMoves = winningMoves[currentBoardState].filter(
+						(m) => gameBoard[m] === ""
+					);
+					if (goodMoves.length > 0) {
+						return goodMoves[Math.floor(Math.random() * goodMoves.length)];
+					}
+				}
+
+				// Then try to avoid losing moves
+				if (losingMoves[currentBoardState]) {
+					const availableMoves = gameBoard
+						.map((cell, index) => (cell === "" ? index : null))
+						.filter((index) => index !== null);
+
+					const safeMoves = availableMoves.filter(
+						(move) => !losingMoves[currentBoardState].includes(move)
+					);
+
+					if (safeMoves.length > 0) {
+						return safeMoves[Math.floor(Math.random() * safeMoves.length)];
+					}
+				}
+
+				// Check if AI can win
+				const winMove = findWinningMove(aiPlayer);
+				if (winMove !== null) return winMove;
+
+				// Check if need to block human
+				const blockMove = findWinningMove(humanPlayer);
+				if (blockMove !== null) return blockMove;
+
+				// Take center if available
+				if (gameBoard[4] === "") return 4;
+
+				// Take corners
+				const corners = [0, 2, 6, 8].filter((i) => gameBoard[i] === "");
+				if (corners.length > 0) {
+					return corners[Math.floor(Math.random() * corners.length)];
+				}
+
+				// Take any available spot
+				const availableMoves = gameBoard
+					.map((cell, index) => (cell === "" ? index : null))
+					.filter((index) => index !== null);
+				return availableMoves[
+					Math.floor(Math.random() * availableMoves.length)
+				];
+			}
+
+			// Find winning move for a player
+			function findWinningMove(player) {
+				for (let i = 0; i < gameBoard.length; i++) {
+					if (gameBoard[i] === "") {
+						// Try this move
+						gameBoard[i] = player;
+
+						// Check if it's a winning move
+						const isWinning = winningCombinations.some((combo) =>
+							combo.every((idx) => gameBoard[idx] === player)
+						);
+
+						// Undo the move
+						gameBoard[i] = "";
+
+						if (isWinning) return i;
+					}
+				}
+				return null;
+			}
+
+			// Check win condition for UI updates
+			function checkWin(player) {
+				return winningCombinations.some((combination) => {
+					const isWinning = combination.every((index) => {
+						return gameBoard[index] === player;
+					});
+
+					if (isWinning) {
+						// Highlight the winning pieces
+						combination.forEach((index) => {
+							cells[index].classList.add("winner");
+						});
+						return true;
+					}
+					return false;
+				});
+			}
+
+			// Check win condition without UI updates
+			function checkWinCondition(board, player) {
+				return winningCombinations.some((combination) => {
+					return combination.every((index) => board[index] === player);
+				});
+			}
+
+			// Check for draw
+			function checkDraw() {
+				return (
+					gameBoard.every((cell) => cell !== "") &&
+					!checkWin(humanPlayer) &&
+					!checkWin(aiPlayer)
+				);
+			}
+
+			// End game
+			function endGame(message, result) {
+				status.textContent = message;
+				status.classList.remove("ai-thinking");
+				gameActive = false;
+
+				// Update stats
+				stats.games++;
+
+				if (result === "win") {
+					stats.wins++;
+					// Learn from this game - Human's winning moves are AI's losing moves
+					learnFromGame("human-win");
+				} else if (result === "loss") {
+					stats.losses++;
+					// Learn from this game - AI's winning moves
+					learnFromGame("ai-win");
+				} else {
+					stats.draws++;
+					// Learn from draw
+					learnFromGame("draw");
+				}
+
+				// Save to storage
+				saveToStorage();
+			}
+
+			// Learn from the completed game
+			function learnFromGame(result) {
+				currentGameMoves.forEach((moveData) => {
+					const boardState = boardToString(
+						moveData.board.map((c) => (c === "" ? "" : c))
+					);
+
+					// Record this board state
+					if (!boardStates[boardState]) {
+						boardStates[boardState] = [];
+					}
+
+					if (!boardStates[boardState].includes(moveData.move)) {
+						boardStates[boardState].push(moveData.move);
+					}
+
+					// Add more weight to the final moves that led to victory or defeat
+					const isFinalMove =
+						currentGameMoves.indexOf(moveData) >= currentGameMoves.length - 6;
+
+					if (result === "ai-win" && moveData.player === aiPlayer) {
+						// AI winning moves
+						if (!winningMoves[boardState]) {
+							winningMoves[boardState] = [];
+						}
+						if (!winningMoves[boardState].includes(moveData.move)) {
+							winningMoves[boardState].push(moveData.move);
+							// Give extra weight to final winning moves
+							if (isFinalMove) {
+								winningMoves[boardState].push(moveData.move);
+							}
+						}
+					} else if (result === "human-win" && moveData.player === aiPlayer) {
+						// AI losing moves
+						if (!losingMoves[boardState]) {
+							losingMoves[boardState] = [];
+						}
+						if (!losingMoves[boardState].includes(moveData.move)) {
+							losingMoves[boardState].push(moveData.move);
+							// Give extra weight to final losing moves
+							if (isFinalMove) {
+								losingMoves[boardState].push(moveData.move);
+							}
+						}
+					}
+					// For draws, we can learn but with less weight
+					else if (result === "draw" && moveData.player === aiPlayer) {
+						// Record but don't give special weight
+						if (!boardStates[boardState]) {
+							boardStates[boardState] = [];
+						}
+						if (!boardStates[boardState].includes(moveData.move)) {
+							boardStates[boardState].push(moveData.move);
+						}
+					}
+				});
+			}
+
+			// Reset the game
+			function resetGame() {
+				gameBoard = ["", "", "", "", "", "", "", "", ""];
+				gameActive = true;
+				isHumanTurn = true;
+				isMovingPhase = false;
+				currentPlayer = humanPlayer;
+				piecesPlaced = { X: 0, O: 0 };
+				selectedCell = null;
+				currentGameMoves = [];
+				aiThinking = false;
+				piecePlacementOrder = { X: [], O: [] };
+				currentMoveIndex = { X: 0, O: 0 };
+				status.textContent = "Your turn to place a piece";
+				status.classList.remove("ai-thinking");
+
+				cells.forEach((cell) => {
+					cell.setAttribute("data-content", "");
+					cell.classList.remove("winner", "selected");
+				});
+			}
+
+			// Reset AI learning
+			function resetLearning() {
+				if (confirm("Are you sure you want to reset all AI learning data?")) {
+					boardStates = {};
+					winningMoves = {};
+					losingMoves = {};
+					stats = { games: 0, wins: 0, losses: 0, draws: 0 };
+					saveToStorage();
+					alert("AI learning data has been reset.");
+				}
+			}
+
+			// Event listeners
+			cells.forEach((cell) => cell.addEventListener("click", handleCellClick));
+			resetBtn.addEventListener("click", resetGame);
+			resetLearningBtn.addEventListener("click", resetLearning);
+
+			// Initialize from storage and start game
+			initFromStorage();
+		</script>
+		</div>
+	</body>
 </html>
