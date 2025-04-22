@@ -92,10 +92,6 @@
         background-color: #e3f2fd;
         border: 1px solid #2196f3;
       }
-      .cell.valid-move {
-        background-color: #e8f5e9;
-        border: 1px solid #4caf50;
-      }
       .cell.winner {
         border: 1px solid #333;
       }
@@ -171,6 +167,10 @@
       let aiThinking = false;
       let currentGameMoves = [];
       let isHumanTurn = true;
+
+      // Track piece placement order (from index.html)
+      let piecePlacementOrder = { X: [], O: [] };
+      let currentMoveIndex = { X: 0, O: 0 };
 
       // Game statistics
       let stats = {
@@ -264,6 +264,7 @@
               gameBoard[index] = humanPlayer;
               cell.setAttribute("data-content", humanPlayer);
               piecesPlaced[humanPlayer]++;
+              piecePlacementOrder[humanPlayer].push(index);
 
               // Record this move
               currentGameMoves.push({
@@ -284,78 +285,57 @@
                 piecesPlaced[aiPlayer] === 3
               ) {
                 isMovingPhase = true;
-                status.textContent = "Select your piece to move";
-                return;
+                // Here we'll handle the moving phase differently later
+              } else {
+                // AI's turn to place a piece
+                isHumanTurn = false;
+                status.textContent = "AI is thinking...";
+                status.classList.add("ai-thinking");
+
+                aiThinking = true;
+                setTimeout(makeAIPlacementMove, 600);
               }
-
-              // AI's turn to place a piece
-              isHumanTurn = false;
-              status.textContent = "AI is thinking...";
-              status.classList.add("ai-thinking");
-
-              aiThinking = true;
-              setTimeout(makeAIPlacementMove, 600);
             }
           }
         } else {
-          // Moving phase
-          if (selectedCell === null) {
-            // Selecting piece to move
-            if (gameBoard[index] === humanPlayer) {
-              selectedCell = index;
-              cell.classList.add("selected");
-              showValidMoves();
-              status.textContent = "Select where to move your piece";
+          // Moving phase (index.html style)
+          if (gameBoard[index] === "" && selectedCell !== null) {
+            // Move the piece to the empty cell
+            gameBoard[index] = humanPlayer;
+            gameBoard[selectedCell] = "";
+            cells[index].setAttribute("data-content", humanPlayer);
+            cells[selectedCell].setAttribute("data-content", "");
+
+            // Update the placement order array
+            const moveIndex =
+              piecePlacementOrder[humanPlayer].indexOf(selectedCell);
+            piecePlacementOrder[humanPlayer][moveIndex] = index;
+
+            // Record this move
+            currentGameMoves.push({
+              board: [...gameBoard],
+              move: index,
+              player: humanPlayer,
+              fromIndex: selectedCell,
+            });
+
+            // Clear selection
+            cells[selectedCell].classList.remove("selected");
+            selectedCell = null;
+
+            // Check for win
+            if (checkWin(humanPlayer)) {
+              endGame(`You win!`, "win");
+              return;
             }
-          } else {
-            // Moving the selected piece
-            if (index !== selectedCell && gameBoard[index] === "") {
-              // Move the piece
-              gameBoard[index] = humanPlayer;
-              gameBoard[selectedCell] = "";
-              cells[index].setAttribute("data-content", humanPlayer);
-              cells[selectedCell].setAttribute("data-content", "");
 
-              // Record this move
-              currentGameMoves.push({
-                board: [...gameBoard],
-                move: index,
-                player: humanPlayer,
-                fromIndex: selectedCell,
-              });
+            // AI's turn to move a piece
+            isHumanTurn = false;
+            status.textContent = "AI is thinking...";
+            status.classList.add("ai-thinking");
 
-              // Clear selection and valid moves
-              cells[selectedCell].classList.remove("selected");
-              clearValidMoves();
-              selectedCell = null;
-
-              // Check for win
-              if (checkWin(humanPlayer)) {
-                endGame(`You win!`, "win");
-                return;
-              }
-
-              // AI's turn to move a piece
-              isHumanTurn = false;
-              status.textContent = "AI is thinking...";
-              status.classList.add("ai-thinking");
-
-              aiThinking = true;
-              setTimeout(makeAIMoveMove, 600);
-            } else if (gameBoard[index] === humanPlayer) {
-              // Change selection to another piece
-              cells[selectedCell].classList.remove("selected");
-              clearValidMoves();
-              selectedCell = index;
-              cell.classList.add("selected");
-              showValidMoves();
-            } else {
-              // Cancel selection
-              cells[selectedCell].classList.remove("selected");
-              clearValidMoves();
-              selectedCell = null;
-              status.textContent = "Select your piece to move";
-            }
+            aiThinking = true;
+            setTimeout(makeAIMoveMove, 600);
           }
         }
       }
@@ -369,6 +349,7 @@
         gameBoard[move] = aiPlayer;
         cells[move].setAttribute("data-content", aiPlayer);
         piecesPlaced[aiPlayer]++;
+        piecePlacementOrder[aiPlayer].push(move);
 
         currentGameMoves.push({
           board: [...gameBoard],
@@ -385,8 +366,14 @@
         // If both players have placed all 3 pieces
         if (piecesPlaced[humanPlayer] === 3 && piecesPlaced[aiPlayer] === 3) {
           isMovingPhase = true;
+          // Switch to moving phase - select the first human piece
+          currentMoveIndex[humanPlayer] = 0;
+          selectedCell =
+            piecePlacementOrder[humanPlayer][currentMoveIndex[humanPlayer]];
+          cells[selectedCell].classList.add("selected");
+
           isHumanTurn = true;
-          status.textContent = "Select your piece to move";
+          status.textContent = "Your turn - Click an empty cell to move";
           status.classList.remove("ai-thinking");
           aiThinking = false;
           return;
@@ -399,16 +386,11 @@
         aiThinking = false;
       }
 
-      // AI moves a piece
-      // Replace the makeAIMoveMove function with this improved version
+      // AI moves a piece (updated for index.html style)
       function makeAIMoveMove() {
-        // Find all AI pieces
-        const aiPieces = [];
-        for (let i = 0; i < gameBoard.length; i++) {
-          if (gameBoard[i] === aiPlayer) {
-            aiPieces.push(i);
-          }
-        }
+        // Get the current AI piece to move
+        const currentAiPiece =
+          piecePlacementOrder[aiPlayer][currentMoveIndex[aiPlayer]];
 
         // Find all empty cells
         const emptyCells = [];
@@ -418,50 +400,49 @@
           }
         }
 
-        // Try each piece-cell combination to find the best move
+        // Try each empty cell to find the best move
         let bestScore = -Infinity;
-        let bestPiece = null;
         let bestCell = null;
 
-        for (const piece of aiPieces) {
-          for (const cell of emptyCells) {
-            // Try this move
-            const originalBoard = [...gameBoard];
-            gameBoard[cell] = aiPlayer;
-            gameBoard[piece] = "";
+        for (const cell of emptyCells) {
+          // Try this move
+          const originalBoard = [...gameBoard];
+          gameBoard[cell] = aiPlayer;
+          gameBoard[currentAiPiece] = "";
 
-            // Score this move
-            let score = evaluateMove(piece, cell);
+          // Score this move
+          let score = evaluateMove(currentAiPiece, cell);
 
-            // Update best move if better
-            if (score > bestScore) {
-              bestScore = score;
-              bestPiece = piece;
-              bestCell = cell;
-            }
-
-            // Restore board
-            gameBoard = originalBoard;
+          // Update best move if better
+          if (score > bestScore) {
+            bestScore = score;
+            bestCell = cell;
           }
+
+          // Restore board
+          gameBoard = originalBoard;
         }
 
-        // If no good move found, use basic logic
-        if (bestPiece === null) {
-          bestPiece = aiPieces[Math.floor(Math.random() * aiPieces.length)];
+        // If no good move found, use random
+        if (bestCell === null && emptyCells.length > 0) {
           bestCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
         }
 
         // Make the move
         gameBoard[bestCell] = aiPlayer;
-        gameBoard[bestPiece] = "";
+        gameBoard[currentAiPiece] = "";
         cells[bestCell].setAttribute("data-content", aiPlayer);
-        cells[bestPiece].setAttribute("data-content", "");
+        cells[currentAiPiece].setAttribute("data-content", "");
+
+        // Update placement order
+        const moveIndex = piecePlacementOrder[aiPlayer].indexOf(currentAiPiece);
+        piecePlacementOrder[aiPlayer][moveIndex] = bestCell;
 
         currentGameMoves.push({
           board: [...gameBoard],
           move: bestCell,
           player: aiPlayer,
-          fromIndex: bestPiece,
+          fromIndex: currentAiPiece,
         });
 
         // Check for win
@@ -470,14 +451,29 @@
           return;
         }
 
-        // Human's turn
+        // Move to the next index in the cycle for AI
+        currentMoveIndex[aiPlayer]++;
+        if (currentMoveIndex[aiPlayer] >= 3) {
+          currentMoveIndex[aiPlayer] = 0;
+        }
+
+        // Human's turn - select the next piece automatically
+        currentMoveIndex[humanPlayer]++;
+        if (currentMoveIndex[humanPlayer] >= 3) {
+          currentMoveIndex[humanPlayer] = 0;
+        }
+
+        selectedCell =
+          piecePlacementOrder[humanPlayer][currentMoveIndex[humanPlayer]];
+        cells[selectedCell].classList.add("selected");
+
         isHumanTurn = true;
-        status.textContent = "Select your piece to move";
+        status.textContent = "Your turn - Click an empty cell to move";
         status.classList.remove("ai-thinking");
         aiThinking = false;
       }
 
-      // Add this new function to evaluate a potential move
+      // Evaluate a potential move
       function evaluateMove(fromPiece, toCell) {
         let score = 0;
 
@@ -558,64 +554,6 @@
         return score;
       }
 
-      // Also, let's improve the learnFromGame function to better handle the moving phase
-      function learnFromGame(result) {
-        currentGameMoves.forEach((moveData) => {
-          const boardState = boardToString(
-            moveData.board.map((c) => (c === "" ? "" : c))
-          );
-
-          // Record this board state
-          if (!boardStates[boardState]) {
-            boardStates[boardState] = [];
-          }
-
-          if (!boardStates[boardState].includes(moveData.move)) {
-            boardStates[boardState].push(moveData.move);
-          }
-
-          // Add more weight to the final moves that led to victory or defeat
-          const isFinalMove =
-            currentGameMoves.indexOf(moveData) >= currentGameMoves.length - 6;
-
-          if (result === "ai-win" && moveData.player === aiPlayer) {
-            // AI winning moves
-            if (!winningMoves[boardState]) {
-              winningMoves[boardState] = [];
-            }
-            if (!winningMoves[boardState].includes(moveData.move)) {
-              winningMoves[boardState].push(moveData.move);
-              // Give extra weight to final winning moves
-              if (isFinalMove) {
-                winningMoves[boardState].push(moveData.move);
-              }
-            }
-          } else if (result === "human-win" && moveData.player === aiPlayer) {
-            // AI losing moves
-            if (!losingMoves[boardState]) {
-              losingMoves[boardState] = [];
-            }
-            if (!losingMoves[boardState].includes(moveData.move)) {
-              losingMoves[boardState].push(moveData.move);
-              // Give extra weight to final losing moves
-              if (isFinalMove) {
-                losingMoves[boardState].push(moveData.move);
-              }
-            }
-          }
-          // For draws, we can learn but with less weight
-          else if (result === "draw" && moveData.player === aiPlayer) {
-            // Record but don't give special weight
-            const boardState = boardToString(moveData.board);
-            if (!boardStates[boardState]) {
-              boardStates[boardState] = [];
-            }
-            if (!boardStates[boardState].includes(moveData.move)) {
-              boardStates[boardState].push(moveData.move);
-            }
-          }
-        });
-      }
       // Adaptive AI for placing pieces
       function makeAdaptiveMove() {
         const currentBoardState = boardToString(gameBoard);
@@ -690,19 +628,6 @@
           }
         }
         return null;
-      }
-
-      function showValidMoves() {
-        // Show all empty cells as valid moves
-        cells.forEach((cell, index) => {
-          if (gameBoard[index] === "") {
-            cell.classList.add("valid-move");
-          }
-        });
-      }
-
-      function clearValidMoves() {
-        cells.forEach((cell) => cell.classList.remove("valid-move"));
       }
 
       // Check win condition for UI updates
@@ -782,6 +707,10 @@
             boardStates[boardState].push(moveData.move);
           }
 
+          // Add more weight to the final moves that led to victory or defeat
+          const isFinalMove =
+            currentGameMoves.indexOf(moveData) >= currentGameMoves.length - 6;
+
           if (result === "ai-win" && moveData.player === aiPlayer) {
             // AI winning moves
             if (!winningMoves[boardState]) {
@@ -789,6 +718,10 @@
             }
             if (!winningMoves[boardState].includes(moveData.move)) {
               winningMoves[boardState].push(moveData.move);
+              // Give extra weight to final winning moves
+              if (isFinalMove) {
+                winningMoves[boardState].push(moveData.move);
+              }
             }
           } else if (result === "human-win" && moveData.player === aiPlayer) {
             // AI losing moves
@@ -797,6 +730,20 @@
             }
             if (!losingMoves[boardState].includes(moveData.move)) {
               losingMoves[boardState].push(moveData.move);
+              // Give extra weight to final losing moves
+              if (isFinalMove) {
+                losingMoves[boardState].push(moveData.move);
+              }
+            }
+          }
+          // For draws, we can learn but with less weight
+          else if (result === "draw" && moveData.player === aiPlayer) {
+            // Record but don't give special weight
+            if (!boardStates[boardState]) {
+              boardStates[boardState] = [];
+            }
+            if (!boardStates[boardState].includes(moveData.move)) {
+              boardStates[boardState].push(moveData.move);
             }
           }
         });
@@ -813,12 +760,14 @@
         selectedCell = null;
         currentGameMoves = [];
         aiThinking = false;
+        piecePlacementOrder = { X: [], O: [] };
+        currentMoveIndex = { X: 0, O: 0 };
         status.textContent = "Your turn to place a piece";
         status.classList.remove("ai-thinking");
 
         cells.forEach((cell) => {
           cell.setAttribute("data-content", "");
-          cell.classList.remove("winner", "selected", "valid-move");
+          cell.classList.remove("winner", "selected");
         });
       }
 
