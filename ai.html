@@ -400,6 +400,7 @@
       }
 
       // AI moves a piece
+      // Replace the makeAIMoveMove function with this improved version
       function makeAIMoveMove() {
         // Find all AI pieces
         const aiPieces = [];
@@ -430,49 +431,7 @@
             gameBoard[piece] = "";
 
             // Score this move
-            let score = 0;
-
-            // Check if this is a winning move
-            if (checkWinCondition(gameBoard, aiPlayer)) {
-              score = 100;
-            } else {
-              // Check if this prevents a human win
-              gameBoard[cell] = ""; // Temporarily empty to check human's options
-              for (const humanCell of emptyCells) {
-                if (humanCell !== cell) continue;
-
-                for (const humanPiece of gameBoard
-                  .map((val, idx) => (val === humanPlayer ? idx : -1))
-                  .filter((idx) => idx !== -1)) {
-                  const tempBoard = [...gameBoard];
-                  tempBoard[humanCell] = humanPlayer;
-                  tempBoard[humanPiece] = "";
-
-                  if (checkWinCondition(tempBoard, humanPlayer)) {
-                    score += 50; // Blocking a win is good
-                  }
-                }
-              }
-
-              // Use learned patterns if available
-              const boardStateStr = boardToString(gameBoard);
-              if (
-                winningMoves[boardStateStr] &&
-                winningMoves[boardStateStr].includes(cell)
-              ) {
-                score += 30;
-              }
-              if (
-                losingMoves[boardStateStr] &&
-                losingMoves[boardStateStr].includes(cell)
-              ) {
-                score -= 30;
-              }
-
-              // Prefer center and corners
-              if (cell === 4) score += 3;
-              if ([0, 2, 6, 8].includes(cell)) score += 2;
-            }
+            let score = evaluateMove(piece, cell);
 
             // Update best move if better
             if (score > bestScore) {
@@ -518,6 +477,145 @@
         aiThinking = false;
       }
 
+      // Add this new function to evaluate a potential move
+      function evaluateMove(fromPiece, toCell) {
+        let score = 0;
+
+        // Check if this is a winning move
+        if (checkWinCondition(gameBoard, aiPlayer)) {
+          return 100; // Immediate winning move gets highest priority
+        }
+
+        // Check if this prevents a human win
+        const originalCell = gameBoard[toCell];
+        gameBoard[toCell] = ""; // Temporarily empty to check
+
+        // Find human pieces
+        const humanPieces = [];
+        for (let i = 0; i < gameBoard.length; i++) {
+          if (gameBoard[i] === humanPlayer) {
+            humanPieces.push(i);
+          }
+        }
+
+        // Check if human has any winning moves that we're blocking
+        for (const humanPiece of humanPieces) {
+          const originalHumanPos = gameBoard[humanPiece];
+          gameBoard[humanPiece] = "";
+
+          if (gameBoard[toCell] === "") {
+            gameBoard[toCell] = humanPlayer;
+            if (checkWinCondition(gameBoard, humanPlayer)) {
+              score += 50; // Blocking a win is good
+            }
+            gameBoard[toCell] = ""; // Reset
+          }
+
+          gameBoard[humanPiece] = originalHumanPos; // Reset
+        }
+
+        // Use learned patterns from previous games
+        const boardStateStr = boardToString(gameBoard);
+        if (
+          winningMoves[boardStateStr] &&
+          winningMoves[boardStateStr].includes(toCell)
+        ) {
+          score += 30;
+        }
+        if (
+          losingMoves[boardStateStr] &&
+          losingMoves[boardStateStr].includes(toCell)
+        ) {
+          score -= 30;
+        }
+
+        // Strategic positioning
+        if (toCell === 4) score += 3; // Center is good
+        if ([0, 2, 6, 8].includes(toCell)) score += 2; // Corners are good
+
+        // Prioritize forming potential winning lines
+        for (const combo of winningCombinations) {
+          let aiCount = 0;
+          let emptyCount = 0;
+
+          for (const idx of combo) {
+            if (gameBoard[idx] === aiPlayer) aiCount++;
+            if (gameBoard[idx] === "") emptyCount++;
+          }
+
+          if (aiCount === 2 && emptyCount === 1) {
+            score += 20; // Creating a potential win next turn
+          }
+        }
+
+        // Add some randomness to avoid predictability
+        score += Math.random() * 0.5;
+
+        // Consider the piece we're moving from - avoid moving from strategic positions unless necessary
+        if (fromPiece === 4) score -= 1; // Slight penalty for moving from center
+        if ([0, 2, 6, 8].includes(fromPiece)) score -= 0.5; // Small penalty for moving from corners
+
+        return score;
+      }
+
+      // Also, let's improve the learnFromGame function to better handle the moving phase
+      function learnFromGame(result) {
+        currentGameMoves.forEach((moveData) => {
+          const boardState = boardToString(
+            moveData.board.map((c) => (c === "" ? "" : c))
+          );
+
+          // Record this board state
+          if (!boardStates[boardState]) {
+            boardStates[boardState] = [];
+          }
+
+          if (!boardStates[boardState].includes(moveData.move)) {
+            boardStates[boardState].push(moveData.move);
+          }
+
+          // Add more weight to the final moves that led to victory or defeat
+          const isFinalMove =
+            currentGameMoves.indexOf(moveData) >= currentGameMoves.length - 6;
+
+          if (result === "ai-win" && moveData.player === aiPlayer) {
+            // AI winning moves
+            if (!winningMoves[boardState]) {
+              winningMoves[boardState] = [];
+            }
+            if (!winningMoves[boardState].includes(moveData.move)) {
+              winningMoves[boardState].push(moveData.move);
+              // Give extra weight to final winning moves
+              if (isFinalMove) {
+                winningMoves[boardState].push(moveData.move);
+              }
+            }
+          } else if (result === "human-win" && moveData.player === aiPlayer) {
+            // AI losing moves
+            if (!losingMoves[boardState]) {
+              losingMoves[boardState] = [];
+            }
+            if (!losingMoves[boardState].includes(moveData.move)) {
+              losingMoves[boardState].push(moveData.move);
+              // Give extra weight to final losing moves
+              if (isFinalMove) {
+                losingMoves[boardState].push(moveData.move);
+              }
+            }
+          }
+          // For draws, we can learn but with less weight
+          else if (result === "draw" && moveData.player === aiPlayer) {
+            // Record but don't give special weight
+            const boardState = boardToString(moveData.board);
+            if (!boardStates[boardState]) {
+              boardStates[boardState] = [];
+            }
+            if (!boardStates[boardState].includes(moveData.move)) {
+              boardStates[boardState].push(moveData.move);
+            }
+          }
+        });
+      }
       // Adaptive AI for placing pieces
       function makeAdaptiveMove() {
         const currentBoardState = boardToString(gameBoard);
