@@ -77,12 +77,7 @@
 				background-color: #45a049;
 			}
 			.cell.selected {
-				background-color: #e3f2fd;
-				border: 1px solid #2196f3;
-			}
-			.cell.valid-move {
-				background-color: #e8f5e9;
-				border: 1px solid #4caf50;
+				color: red;
 			}
 			.cell.winner {
 				border: 1px solid #333;
@@ -136,6 +131,14 @@
 				[2, 4, 6],
 			];
 
+			function showValidMoves() {
+				// Empty function since we're not showing valid moves anymore
+			}
+
+			function clearValidMoves() {
+				// Empty function since we're not using valid moves anymore
+			}
+
 			function handleCellClick(e) {
 				const cell = e.target;
 				const index = parseInt(cell.dataset.index);
@@ -160,11 +163,9 @@
 							if (piecesPlaced.X === 3 && piecesPlaced.O === 3) {
 								isMovingPhase = true;
 								currentPlayer = currentPlayer === "X" ? "O" : "X";
-								// Automatically select the first piece
 								const firstPieceIndex = piecePlacementOrder[currentPlayer][currentMoveIndex[currentPlayer]];
 								selectedCell = firstPieceIndex;
 								cells[firstPieceIndex].classList.add("selected");
-								showValidMoves();
 								status.textContent = `Player ${currentPlayer}'s turn (Click an empty cell to move)`;
 							} else {
 								currentPlayer = currentPlayer === "X" ? "O" : "X";
@@ -173,23 +174,18 @@
 						}
 					}
 				} else {
-					// Moving phase
 					const currentPieceIndex = piecePlacementOrder[currentPlayer][currentMoveIndex[currentPlayer]];
 					
 					if (gameBoard[index] === "") {
-						// Move the piece if clicking on an empty cell
 						gameBoard[index] = currentPlayer;
 						gameBoard[selectedCell] = "";
 						cells[index].setAttribute("data-content", currentPlayer);
 						cells[selectedCell].setAttribute("data-content", "");
 
-						// Update piece placement order
 						const moveIndex = piecePlacementOrder[currentPlayer].indexOf(selectedCell);
 						piecePlacementOrder[currentPlayer][moveIndex] = index;
 
-						// Clear previous selection and valid moves
 						cells[selectedCell].classList.remove("selected");
-						clearValidMoves();
 
 						if (checkWin()) {
 							status.textContent = `Player ${currentPlayer} wins!`;
@@ -197,33 +193,17 @@
 							return;
 						}
 
-						// Increment the move index
 						currentMoveIndex[currentPlayer]++;
 						if (currentMoveIndex[currentPlayer] >= 3) {
 							currentMoveIndex[currentPlayer] = 0;
 						}
 
-						// Switch player and automatically select their piece
 						currentPlayer = currentPlayer === "X" ? "O" : "X";
 						selectedCell = piecePlacementOrder[currentPlayer][currentMoveIndex[currentPlayer]];
 						cells[selectedCell].classList.add("selected");
-						showValidMoves();
 						status.textContent = `Player ${currentPlayer}'s turn (Click an empty cell to move)`;
 					}
 				}
-			}
-
-			function showValidMoves() {
-				// Show all empty cells as valid moves
-				cells.forEach((cell, index) => {
-					if (gameBoard[index] === "") {
-						cell.classList.add("valid-move");
-					}
-				});
-			}
-
-			function clearValidMoves() {
-				cells.forEach((cell) => cell.classList.remove("valid-move"));
 			}
 
 			function checkWin() {
@@ -250,13 +230,12 @@
 				piecesPlaced = { X: 0, O: 0 };
 				isMovingPhase = false;
 				selectedCell = null;
-				// Reset piece placement tracking
 				piecePlacementOrder = { X: [], O: [] };
 				currentMoveIndex = { X: 0, O: 0 };
 				status.textContent = "Player X's turn (Place your piece)";
 				cells.forEach((cell) => {
 					cell.setAttribute("data-content", "");
-					cell.classList.remove("selected", "valid-move", "winner");
+					cell.classList.remove("selected", "winner");
 				});
 			}
 
