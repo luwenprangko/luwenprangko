@@ -95,6 +95,10 @@
 			.cell.selected {
 				color: red;
 			}
+			/* New CSS for AI's next move indicator */
+			.cell.ai-next {
+				color: orange;
+			}
 			.cell.winner {
 				border: 1px solid #333;
 			}
@@ -255,6 +259,20 @@
 				return board.join("");
 			}
 
+			// Update AI next move indicator
+			function updateAINextIndicator() {
+				// Remove any previous AI indicator
+				cells.forEach(cell => cell.classList.remove("ai-next"));
+				
+				// If in moving phase and we have pieces, highlight AI's next move
+				if (isMovingPhase && piecePlacementOrder[aiPlayer].length === 3) {
+					const nextAiPiece = piecePlacementOrder[aiPlayer][currentMoveIndex[aiPlayer]];
+					if (nextAiPiece !== undefined && cells[nextAiPiece]) {
+						cells[nextAiPiece].classList.add("ai-next");
+					}
+				}
+			}
+
 			// Handle cell click
 			function handleCellClick(e) {
 				if (!gameActive || !isHumanTurn || aiThinking) return;
@@ -371,11 +389,15 @@
 				// If both players have placed all 3 pieces
 				if (piecesPlaced[humanPlayer] === 3 && piecesPlaced[aiPlayer] === 3) {
 					isMovingPhase = true;
+					
 					// Switch to moving phase - select the first human piece
 					currentMoveIndex[humanPlayer] = 0;
 					selectedCell =
 						piecePlacementOrder[humanPlayer][currentMoveIndex[humanPlayer]];
 					cells[selectedCell].classList.add("selected");
+					
+					// Also highlight AI's next piece
+					updateAINextIndicator();
 
 					isHumanTurn = true;
 					status.textContent = "Your turn - Click an empty cell to move";
@@ -393,6 +415,9 @@
 
 			// AI moves a piece (updated for index.html style)
 			function makeAIMoveMove() {
+				// Remove AI next indicator before move
+				cells.forEach(cell => cell.classList.remove("ai-next"));
+				
 				// Get the current AI piece to move
 				const currentAiPiece =
 					piecePlacementOrder[aiPlayer][currentMoveIndex[aiPlayer]];
@@ -471,6 +496,9 @@
 				selectedCell =
 					piecePlacementOrder[humanPlayer][currentMoveIndex[humanPlayer]];
 				cells[selectedCell].classList.add("selected");
+				
+				// Update AI next indicator
+				updateAINextIndicator();
 
 				isHumanTurn = true;
 				status.textContent = "Your turn - Click an empty cell to move";
@@ -674,6 +702,9 @@
 				status.textContent = message;
 				status.classList.remove("ai-thinking");
 				gameActive = false;
+				
+				// Clear indicators
+				cells.forEach(cell => cell.classList.remove("ai-next"));
 
 				// Update stats
 				stats.games++;
@@ -772,7 +803,7 @@
 
 				cells.forEach((cell) => {
 					cell.setAttribute("data-content", "");
-					cell.classList.remove("winner", "selected");
+					cell.classList.remove("winner", "selected", "ai-next");
 				});
 			}
 
