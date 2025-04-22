@@ -121,6 +121,9 @@
 			let piecesPlaced = { X: 0, O: 0 };
 			let selectedCell = null;
 			let isMovingPhase = false;
+			// Add tracking for piece placement order
+			let piecePlacementOrder = { X: [], O: [] };
+			let currentMoveIndex = { X: 0, O: 0 };
 
 			const winningCombinations = [
 				[0, 1, 2],
@@ -146,6 +149,7 @@
 							gameBoard[index] = currentPlayer;
 							cell.setAttribute("data-content", currentPlayer);
 							piecesPlaced[currentPlayer]++;
+							piecePlacementOrder[currentPlayer].push(index);
 
 							if (checkWin()) {
 								status.textContent = `Player ${currentPlayer} wins!`;
@@ -155,9 +159,13 @@
 
 							if (piecesPlaced.X === 3 && piecesPlaced.O === 3) {
 								isMovingPhase = true;
-								// Switch to the opposite player of the last placement
 								currentPlayer = currentPlayer === "X" ? "O" : "X";
-								status.textContent = `Player ${currentPlayer}'s turn (Select a piece to move)`;
+								// Automatically select the first piece
+								const firstPieceIndex = piecePlacementOrder[currentPlayer][currentMoveIndex[currentPlayer]];
+								selectedCell = firstPieceIndex;
+								cells[firstPieceIndex].classList.add("selected");
+								showValidMoves();
+								status.textContent = `Player ${currentPlayer}'s turn (Click an empty cell to move)`;
 							} else {
 								currentPlayer = currentPlayer === "X" ? "O" : "X";
 								status.textContent = `Player ${currentPlayer}'s turn (Place your piece)`;
@@ -166,50 +174,41 @@
 					}
 				} else {
 					// Moving phase
-					if (selectedCell === null) {
-						// Selecting piece to move
-						if (gameBoard[index] === currentPlayer) {
-							selectedCell = index;
-							cell.classList.add("selected");
-							showValidMoves();
-							status.textContent = `Select where to move your ${currentPlayer}`;
+					const currentPieceIndex = piecePlacementOrder[currentPlayer][currentMoveIndex[currentPlayer]];
+					
+					if (gameBoard[index] === "") {
+						// Move the piece if clicking on an empty cell
+						gameBoard[index] = currentPlayer;
+						gameBoard[selectedCell] = "";
+						cells[index].setAttribute("data-content", currentPlayer);
+						cells[selectedCell].setAttribute("data-content", "");
+
+						// Update piece placement order
+						const moveIndex = piecePlacementOrder[currentPlayer].indexOf(selectedCell);
+						piecePlacementOrder[currentPlayer][moveIndex] = index;
+
+						// Clear previous selection and valid moves
+						cells[selectedCell].classList.remove("selected");
+						clearValidMoves();
+
+						if (checkWin()) {
+							status.textContent = `Player ${currentPlayer} wins!`;
+							gameActive = false;
+							return;
 						}
-					} else {
-						// Moving the selected piece
-						if (index !== selectedCell && gameBoard[index] === "") {
-							// Move the piece to any empty space
-							gameBoard[index] = currentPlayer;
-							gameBoard[selectedCell] = "";
-							cells[index].setAttribute("data-content", currentPlayer);
-							cells[selectedCell].setAttribute("data-content", "");
 
-							// Clear selection and valid moves
-							cells[selectedCell].classList.remove("selected");
-							clearValidMoves();
-							selectedCell = null;
-
-							if (checkWin()) {
-								status.textContent = `Player ${currentPlayer} wins!`;
-								gameActive = false;
-								return;
-							}
-
-							currentPlayer = currentPlayer === "X" ? "O" : "X";
-							status.textContent = `Player ${currentPlayer}'s turn (Select a piece to move)`;
-						} else if (gameBoard[index] === currentPlayer) {
-							// Change selection to another piece
-							cells[selectedCell].classList.remove("selected");
-							clearValidMoves();
-							selectedCell = index;
-							cell.classList.add("selected");
-							showValidMoves();
-						} else {
-							// Cancel selection
-							cells[selectedCell].classList.remove("selected");
-							clearValidMoves();
-							selectedCell = null;
-							status.textContent = `Player ${currentPlayer}'s turn (Select a piece to move)`;
+						// Increment the move index
+						currentMoveIndex[currentPlayer]++;
+						if (currentMoveIndex[currentPlayer] >= 3) {
+							currentMoveIndex[currentPlayer] = 0;
 						}
+
+						// Switch player and automatically select their piece
+						currentPlayer = currentPlayer === "X" ? "O" : "X";
+						selectedCell = piecePlacementOrder[currentPlayer][currentMoveIndex[currentPlayer]];
+						cells[selectedCell].classList.add("selected");
+						showValidMoves();
+						status.textContent = `Player ${currentPlayer}'s turn (Click an empty cell to move)`;
 					}
 				}
 			}
@@ -251,6 +250,9 @@
 				piecesPlaced = { X: 0, O: 0 };
 				isMovingPhase = false;
 				selectedCell = null;
+				// Reset piece placement tracking
+				piecePlacementOrder = { X: [], O: [] };
+				currentMoveIndex = { X: 0, O: 0 };
 				status.textContent = "Player X's turn (Place your piece)";
 				cells.forEach((cell) => {
 					cell.setAttribute("data-content", "");
