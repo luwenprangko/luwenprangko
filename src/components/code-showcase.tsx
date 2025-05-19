@@ -30,106 +30,41 @@ const myFramework = [
 				/>
 			</svg>
 		),
-		title: "Vue Fundamentals",
+		title: "Vue.js Composition API",
 		description:
-			"I chose Vue as my primary UI framework for its progressive architecture and intuitive design. Learn the core concepts of Vue, from components and props to composition API and reactivity. Build interactive UIs with this elegant and performant framework.",
+			"Vue.js is a progressive framework for building user interfaces. The Composition API provides a set of additive, function-based APIs that allow flexible composition of component logic, along with TypeScript support and better runtime performance.",
 		tutorials: [
 			{
-				title: "Composition API Basics",
-				description: "Create reusable logic with Vue's Composition API",
-				level: "Intermediate",
+				title: "State Management",
+				description:
+					"Implement state management patterns using Composition API and Pinia",
+				level: "Advanced",
 			},
 		],
-		codeSnippet: `<script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+		codeSnippet: `
+import { ref, onMounted } from 'vue'
 
-// Props interface
-interface CounterProps {
-  initialValue?: number
-  persistKey?: string
-}
+export default {
+  setup() {
+    const count = ref(0)
+    const message = ref('Hello Vue!')
 
-// Define props with defaults
-const props = withDefaults(defineProps<CounterProps>(), {
-  initialValue: 0,
-  persistKey: 'counter'
-})
+    const increment = () => {
+      count.value++
+    }
 
-// Initialize state from localStorage or use initial value
-const count = ref(() => {
-  if (typeof window === 'undefined') return props.initialValue
-  
-  try {
-    const item = window.localStorage.getItem(props.persistKey)
-    return item ? JSON.parse(item) : props.initialValue
-  } catch (error) {
-    console.error('Error reading from localStorage:', error)
-    return props.initialValue
+    onMounted(() => {
+      console.log('Component is mounted!')
+    })
+
+    return {
+      count,
+      message,
+      increment
+    }
   }
-})
-
-// Computed property for doubled value
-const doubledCount = computed(() => count.value * 2)
-
-// Watch for changes and update localStorage
-watch(count, (newValue) => {
-  try {
-    window.localStorage.setItem(props.persistKey, JSON.stringify(newValue))
-  } catch (error) {
-    console.error('Error writing to localStorage:', error)
-  }
-})
-
-// Methods
-const increment = () => count.value++
-const decrement = () => count.value--
-const reset = () => count.value = props.initialValue
-
-// Lifecycle hooks
-onMounted(() => {
-  console.log('Counter component mounted')
-})
-</script>
-
-<template>
-  <div class="counter-container">
-    <h2>Counter: {{ count }}</h2>
-    <p>Doubled: {{ doubledCount }}</p>
-    
-    <div class="button-group">
-      <button @click="decrement">Decrement</button>
-      <button @click="increment">Increment</button>
-      <button @click="reset">Reset</button>
-    </div>
-  </div>
-</template>
-
-<style scoped>
-.counter-container {
-  padding: 1rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
 }
-
-.button-group {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 1rem;
-}
-
-button {
-  padding: 0.5rem 1rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  background: #fff;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-button:hover {
-  background: #f0f0f0;
-}
-</style>`,
+`,
 	},
 	{
 		id: "nextjs",
@@ -191,91 +126,26 @@ button:hover {
 				level: "Intermediate",
 			},
 		],
-		codeSnippet: `// app/products/[category]/page.tsx
-import { Suspense } from 'react';
-import { notFound } from 'next/navigation';
-import ProductGrid from '@/components/product-grid';
-import ProductFilters from '@/components/product-filters';
-import LoadingProductGrid from '@/components/loading-product-grid';
-import { getProductsByCategory } from '@/lib/products';
-
-// Metadata generation for SEO
-export async function generateMetadata({ params }) {
-  const category = params.category;
-  
-  // Capitalize first letter for title
-  const formattedCategory = category.charAt(0).toUpperCase() + category.slice(1);
-  
-  return {
-    title: \`\${formattedCategory} Products | My Store\`,
-    description: \`Browse our selection of \${category} products. Find the best deals on \${category}.\`,
-    openGraph: {
-      images: [
-        {
-          url: \`/api/og?title=\${formattedCategory} Products\`,
-          width: 1200,
-          height: 630,
-        },
-      ],
-    },
-  };
-}
-
-// Generate static paths at build time
-export async function generateStaticParams() {
-  const categories = ['electronics', 'clothing', 'books', 'home', 'sports'];
-  
-  return categories.map((category) => ({
-    category,
-  }));
-}
-
-export default async function CategoryPage({ params }) {
-  const { category } = params;
-  
-  // Validate the category
-  const validCategories = ['electronics', 'clothing', 'books', 'home', 'sports'];
-  if (!validCategories.includes(category)) {
-    notFound();
-  }
-  
+		codeSnippet: `
+export default function Home() {
   return (
-    <main className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">
-        {category.charAt(0).toUpperCase() + category.slice(1)} Products
-      </h1>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        <div className="lg:col-span-1">
-          <ProductFilters category={category} />
-        </div>
-        
-        <div className="lg:col-span-3">
-          <Suspense fallback={<LoadingProductGrid />}>
-            <ProductList category={category} />
-          </Suspense>
-        </div>
-      </div>
+    <main style={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      height: '100vh',
+      fontFamily: 'Arial, sans-serif'
+    }}>
+      <h1>Hello World 🌍</h1>
     </main>
   );
 }
-
-// This component is separated to leverage Suspense
-async function ProductList({ category }) {
-  // Fetch products with a 3-second revalidation
-  const products = await getProductsByCategory(category, { next: { revalidate: 3 } });
-  
-  if (products.length === 0) {
-    return <p>No products found in this category.</p>;
-  }
-  
-  return <ProductGrid products={products} />;
-}`,
+`,
 	},
 ];
 
 export default function CodeShowcase() {
-	const [activeTab, setActiveTab] = useState("vue");
+	const [activeTab, setActiveTab] = useState("nextjs");
 
 	return (
 		<section
@@ -397,8 +267,15 @@ export default function CodeShowcase() {
 											<div className="h-3 w-3 rounded-full bg-green-500" />
 										</div>
 									</div>
-									<pre className="bg-zinc-950 text-zinc-100 p-4 overflow-y-auto h-[350px] text-sm">
-										<code>{tech.codeSnippet}</code>
+									<pre className="bg-zinc-950 text-zinc-100 p-4 overflow-y-auto h-[350px] text-sm relative">
+										<div className="absolute left-4 select-none text-zinc-600 pr-2 border-r border-zinc-800">
+											{tech.codeSnippet.split("\n").map((_, i) => (
+												<div key={i} className="text-right">
+													{i + 1}
+												</div>
+											))}
+										</div>
+										<code className="pl-8 block">{tech.codeSnippet}</code>
 									</pre>
 								</div>
 							</div>

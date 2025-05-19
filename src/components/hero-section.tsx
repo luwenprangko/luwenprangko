@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { badgeVariants } from "@/components/ui/badge";
+import { RainbowButton } from "@/components/buttons/rainbow-button";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
@@ -20,24 +21,20 @@ export default function HeroSection() {
 								badgeVariants({
 									variant: "outline",
 								}),
-								"rounded-full pl-[3px] py-0.5 pr-3 flex items-center"
+								"rounded-full pl-[3px] py-0.5 px-1 pr-1.5 flex items-center"
 							)}
 							aria-label="Visit GitHub profile"
 						>
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
-								viewBox="0 0 100 100"
-								className="h-5 w-5 mr-2"
-								aria-hidden="true"
+								width="24"
+								height="24"
+								viewBox="0 0 24 24"
 							>
-								<g>
-									<path
-										fillRule="evenodd"
-										clipRule="evenodd"
-										fill="currentColor"
-										d="M73.232,28.96c-5.631,0-10.194,4.567-10.194,10.197   c0,8.74-4.368,13.108-13.11,13.108c-8.737,0-13.111-4.369-13.111-13.108c0-5.63-4.563-10.197-10.194-10.197   s-10.194,4.567-10.194,10.197c0,5.631,4.563,10.198,10.194,10.198c8.742,0,13.111,4.369,13.111,13.111   c0,5.631,4.563,10.194,10.195,10.194c5.63,0,10.2-4.563,10.2-10.194c0-8.742,4.368-13.111,13.104-13.111   c5.637,0,10.2-4.567,10.2-10.198C83.433,33.527,78.869,28.96,73.232,28.96z"
-									/>
-								</g>
+								<path
+									fill="currentColor"
+									d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5c.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34c-.46-1.16-1.11-1.47-1.11-1.47c-.91-.62.07-.6.07-.6c1 .07 1.53 1.03 1.53 1.03c.87 1.52 2.34 1.07 2.91.83c.09-.65.35-1.09.63-1.34c-2.22-.25-4.55-1.11-4.55-4.92c0-1.11.38-2 1.03-2.71c-.1-.25-.45-1.29.1-2.64c0 0 .84-.27 2.75 1.02c.79-.22 1.65-.33 2.5-.33s1.71.11 2.5.33c1.91-1.29 2.75-1.02 2.75-1.02c.55 1.35.2 2.39.1 2.64c.65.71 1.03 1.6 1.03 2.71c0 3.82-2.34 4.66-4.57 4.91c.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2"
+								/>
 							</svg>
 							luwenprangko
 						</Link>
@@ -45,22 +42,22 @@ export default function HeroSection() {
 
 					<h1
 						id="hero-heading"
-						className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tighter max-w-3xl"
+						className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tighter max-w-3xl"
 					>
 						Louien Franco
 					</h1>
 
 					<p className="text-muted-foreground text-base md:text-xl max-w-[42rem]">
-						I'm a passionate full-stack developer focused on crafting clean,
-						efficient, and scalable digital solutions. I specialize in building
-						modern web applications using cutting-edge tools and
-						frameworks—bringing ideas to life through code and design.
+						I build sleek,{" "}
+						<span className="text-primary font-medium">
+							high-performing front-end
+						</span>{" "}
+						interfaces that feel just as good as they look. Every line of code
+						is written with purpose — speed, style, and seamless UX.
 					</p>
 
 					<div className="flex flex-col sm:flex-row gap-4 mt-4">
-						<Button size="lg" className="w-full sm:w-auto">
-							<span>Know More</span>
-						</Button>
+						<RainbowButton>Know More</RainbowButton>
 						<Button size="lg" variant="outline" className="w-full sm:w-auto">
 							<span>Tech Stack</span>
 						</Button>
@@ -68,11 +65,19 @@ export default function HeroSection() {
 				</div>
 
 				<div className="space-y-4 text-center">
-					<p className="text-sm text-muted-foreground">
+					<div className="text-sm text-muted-foreground">
+						<code className="font-mono">
+							$ ~{" "}
+							<span>
+								git clone https://github.com/luwenprangko/luwenprangko.git
+							</span>
+						</code>
+					</div>
+					{/* <p className="text-sm text-muted-foreground font-mono">
 						Powering the next generation of digital products
-					</p>
+					</p> */}
 
-					<div className="flex flex-wrap justify-center items-center gap-6 md:gap-8">
+					{/* <div className="flex flex-wrap justify-center items-center gap-6 md:gap-8">
 						<div className="flex items-center">
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
@@ -250,7 +255,7 @@ export default function HeroSection() {
 							</svg>
 							<span className="font-medium">NextJS</span>
 						</div>
-					</div>
+					</div> */}
 				</div>
 			</div>
 		</section>

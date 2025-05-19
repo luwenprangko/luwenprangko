@@ -47,16 +47,16 @@ const ContactSection = () => {
 				<div className="max-w-md mx-auto">
 					<div className="text-center mb-8">
 						<span className="text-sm font-medium text-muted-foreground">
-							Reach Out to Us
+							Reach Out to Me!
 						</span>
 						<h2
 							id="contact-heading"
 							className="mt-2 text-3xl font-bold tracking-tight"
 						>
-							We&apos;re Here to Help
+							I&apos;m Here to Help
 						</h2>
 						<p className="mt-3 text-muted-foreground text-sm">
-							Please fill out the form below, and we will get back to you soon.
+							Have a project in mind? Let’s connect and make it happen.
 						</p>
 					</div>
 
@@ -101,21 +101,6 @@ const ContactSection = () => {
 								type="email"
 								placeholder="Your Email"
 								value={formData.email}
-								onChange={handleChange}
-								required
-							/>
-						</div>
-
-						<div className="space-y-2">
-							<Label htmlFor="phone">
-								Contact Number <span className="text-primary">*</span>
-							</Label>
-							<Input
-								id="phone"
-								name="phone"
-								type="tel"
-								placeholder="+123 456 7890"
-								value={formData.phone}
 								onChange={handleChange}
 								required
 							/>

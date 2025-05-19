@@ -5,6 +5,7 @@ import Timeline from "@/components/timeline-section";
 import CodeShowcase from "@/components/code-showcase";
 import ContactSection from "@/components/contact-section";
 import Footer from "@/components/footer";
+import { ModeToggle } from "@/components/toggle-mode";
 import { notFound } from "next/navigation";
 
 export default function Home() {
@@ -20,6 +21,7 @@ export default function Home() {
 				<Timeline />
 				<CodeShowcase />
 				<ContactSection />
+				<ModeToggle />
 			</main>
 			<Footer />
 		</>

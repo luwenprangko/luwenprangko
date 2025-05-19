@@ -9,7 +9,7 @@ export default function Footer() {
 			<div className="container px-4 md:px-6 mx-auto">
 				<div className="flex flex-col items-center">
 					{/* Logo */}
-					<div className="mb-8">
+					<div className="">
 						<Link href="/" className="flex items-center justify-center">
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
@@ -29,69 +29,12 @@ export default function Footer() {
 							<span className="ml-2 text-xl font-bold">luwen</span>
 						</Link>
 					</div>
-
-					{/* Navigation */}
-					<nav className="mb-10">
-						<ul className="flex flex-wrap justify-center gap-x-8 gap-y-4">
-							<li>
-								<Link
-									href="#overview"
-									className="text-muted-foreground hover:text-foreground transition-colors"
-								>
-									Overview
-								</Link>
-							</li>
-							<li>
-								<Link
-									href="#features"
-									className="text-muted-foreground hover:text-foreground transition-colors"
-								>
-									Features
-								</Link>
-							</li>
-							<li>
-								<Link
-									href="#pricing"
-									className="text-muted-foreground hover:text-foreground transition-colors"
-								>
-									Pricing
-								</Link>
-							</li>
-							<li>
-								<Link
-									href="#careers"
-									className="text-muted-foreground hover:text-foreground transition-colors"
-								>
-									Careers
-								</Link>
-							</li>
-							<li>
-								<Link
-									href="#help"
-									className="text-muted-foreground hover:text-foreground transition-colors"
-								>
-									Help
-								</Link>
-							</li>
-							<li>
-								<Link
-									href="#privacy"
-									className="text-muted-foreground hover:text-foreground transition-colors"
-								>
-									Privacy
-								</Link>
-							</li>
-						</ul>
-					</nav>
 				</div>
-
-				{/* Divider */}
-				<div className="h-px bg-border my-8" />
 
 				{/* Bottom section */}
 				<div className="flex flex-col md:flex-row justify-between items-center">
 					<p className="text-sm text-muted-foreground mb-4 md:mb-0">
-						© {currentYear} Shadcn UI Blocks. All rights reserved.
+						© {currentYear} Louien Franco. All rights reserved.
 					</p>
 
 					<div className="flex items-center space-x-4">
