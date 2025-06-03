@@ -4,7 +4,7 @@ import { ExternalLink } from "lucide-react";
 import Image from "next/image";
 import { GithubLogo } from "./icons";
 import { cn } from "@/lib/utils";
-import { DottedGridPattern } from "./designs/dotted-bg";
+import { CpuArchitecture } from "./designs/cpu-architecture";
 
 interface ProjectCardProps {
   title: string;
@@ -40,13 +40,12 @@ const ProjectCard = ({
       {/* Content */}
       <div className="flex-1 flex flex-col p-6">
         <h3 className="text-xl font-semibold mb-2">{title}</h3>
-        <p className="text-muted-foreground mb-4">{description}</p>
+        <p className="text-muted-foreground mb-4 line-clamp-2">{description}</p>
 
         {/* Technologies */}
         <div
           className="flex flex-wrap gap-2 mb-6"
-          aria-label={`Technologies used in ${title}`}
-        >
+          aria-label={`Technologies used in ${title}`}>
           {technologies.map((tech) => (
             <Badge key={tech} variant="secondary" className="rounded-full">
               {tech}
@@ -62,8 +61,7 @@ const ProjectCard = ({
                 href={liveUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={`View live demo of ${title}`}
-              >
+                aria-label={`View live demo of ${title}`}>
                 <ExternalLink className="mr-1 h-4 w-4" aria-hidden="true" />
                 <span>Live Demo</span>
               </a>
@@ -73,14 +71,12 @@ const ProjectCard = ({
             <Button
               variant="outline"
               className="rounded-full shadow-none"
-              asChild
-            >
+              asChild>
               <a
                 href={githubUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={`View source code for ${title} on GitHub`}
-              >
+                aria-label={`View source code for ${title} on GitHub`}>
                 <GithubLogo aria-hidden="true" />
                 <span>View Code</span>
               </a>
@@ -108,33 +104,22 @@ const Projects = () => {
   return (
     <section
       id="projects"
-      className="relative w-full py-12 md:py-24"
-      aria-labelledby="projects-heading"
-    >
-      <DottedGridPattern
-        width={20}
-        height={20}
-        opacity={0.4}
-        x={-1}
-        y={-1}
-        className={cn(
-          "[mask-image:linear-gradient(to_bottom_right,white,transparent,transparent)] "
-        )}
-      />
+      className="relative w-full pb-12 md:pb-24"
+      aria-labelledby="projects-heading">
       <div className="container px-4 md:px-6 mx-auto max-w-3xl">
-        <div className="text-center mb-12">
+        <div className="text-center min-h-screen flex flex-col items-center justify-center">
           <Badge variant="secondary" className="mb-4">
             Projects
           </Badge>
           <h2
             id="projects-heading"
-            className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight"
-          >
+            className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight">
             Featured Work
           </h2>
           <p className="text-muted-foreground mt-2 sm:mt-4 text-lg">
             Showcasing some of my projects and technical achievements
           </p>
+          <CpuArchitecture text="PROJ" />
         </div>
 
         <div
@@ -142,13 +127,11 @@ const Projects = () => {
             projects.length === 1
               ? "flex justify-center"
               : "grid grid-cols-1 md:grid-cols-2 gap-6"
-          }`}
-        >
+          }`}>
           {projects.map((project, index) => (
             <div
               key={index}
-              className={projects.length === 1 ? "w-full max-w-md" : ""}
-            >
+              className={projects.length === 1 ? "w-full max-w-md" : ""}>
               <ProjectCard {...project} />
             </div>
           ))}

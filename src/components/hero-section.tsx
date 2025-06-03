@@ -9,9 +9,8 @@ import { GridPattern } from "@/components/designs/grid-bg";
 export default function HeroSection() {
   return (
     <section
-      className="relative  w-full min-h-screen flex flex-col items-center justify-center"
-      aria-labelledby="hero-heading"
-    >
+      className="relative w-full min-h-screen flex flex-col items-center justify-center"
+      aria-labelledby="hero-heading">
       <GridPattern
         squares={[
           [4, 4],
@@ -27,8 +26,8 @@ export default function HeroSection() {
           [10, 15],
           [15, 10],
         ]}
-        width={40}
-        height={40}
+        width={35}
+        height={35}
         className={cn(
           "[mask-image:radial-gradient(300px_circle_at_center,white,transparent)]",
           " h-[100%]"
@@ -47,14 +46,12 @@ export default function HeroSection() {
                 }),
                 "rounded-full pl-[3px] py-0.5 px-1 pr-1.5 flex items-center"
               )}
-              aria-label="Visit GitHub profile"
-            >
+              aria-label="Visit GitHub profile">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="24"
                 height="24"
-                viewBox="0 0 24 24"
-              >
+                viewBox="0 0 24 24">
                 <path
                   fill="currentColor"
                   d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5c.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34c-.46-1.16-1.11-1.47-1.11-1.47c-.91-.62.07-.6.07-.6c1 .07 1.53 1.03 1.53 1.03c.87 1.52 2.34 1.07 2.91.83c.09-.65.35-1.09.63-1.34c-2.22-.25-4.55-1.11-4.55-4.92c0-1.11.38-2 1.03-2.71c-.1-.25-.45-1.29.1-2.64c0 0 .84-.27 2.75 1.02c.79-.22 1.65-.33 2.5-.33s1.71.11 2.5.33c1.91-1.29 2.75-1.02 2.75-1.02c.55 1.35.2 2.39.1 2.64c.65.71 1.03 1.6 1.03 2.71c0 3.82-2.34 4.66-4.57 4.91c.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2"
@@ -66,8 +63,7 @@ export default function HeroSection() {
 
           <h1
             id="hero-heading"
-            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tighter max-w-3xl"
-          >
+            className="text-5xl sm:text-5xl md:text-5xl lg:text-6xl font-extrabold tracking-tighter max-w-3xl font-mono">
             Louien Franco
           </h1>
 
@@ -78,9 +74,9 @@ export default function HeroSection() {
             Louien Franco
           </h1> */}
 
-          <p className="text-muted-foreground text-base md:text-xl max-w-[42rem]">
+          <p className="text-muted-foreground text-base md:text-md max-w-[42rem]">
             I build sleek,{" "}
-            <span className="text-primary font-medium">
+            <span className="text-primary font-medium font-mono">
               high-performing front-end
             </span>{" "}
             interfaces that feel just as good as they look. Every line of code
@@ -88,7 +84,9 @@ export default function HeroSection() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 mt-4">
-            <RainbowButton>Know More</RainbowButton>
+            <Link href={"/about"}>
+              <RainbowButton>Know More</RainbowButton>
+            </Link>
             {/* <Button size="lg" variant="outline" className="w-full sm:w-auto">
 							<span>Tech Stack</span>
 						</Button> */}

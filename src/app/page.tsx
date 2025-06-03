@@ -1,12 +1,10 @@
-import Navbar from "@/components/navbar";
 import HeroSection from "@/components/hero-section";
 import About from "@/components/about-section";
 import Timeline from "@/components/timeline-section";
-import CodeShowcase from "@/components/code-block";
 import ContactSection from "@/components/contact-section";
 import Footer from "@/components/footer";
-import { ModeToggle } from "@/components/toggle-mode";
 import Projects from "@/components/projects-section";
+import { CpuArchitecture } from "@/components/designs/cpu-architecture";
 import { notFound } from "next/navigation";
 
 export default function Home() {
@@ -14,18 +12,18 @@ export default function Home() {
   // notFound();
   return (
     <>
-      <Navbar />
       {/* fixed topbar here */}
       <main className="flex min-h-screen flex-col">
         <HeroSection />
-        <About />
+        {/* <About />
         <Timeline />
+        <div className="flex items-center justify-center">
+          <CpuArchitecture text="PROJ" maxSize="max-w-2xl" />
+        </div>
         <Projects />
-        {/* <CodeShowcase /> */}
-        <ContactSection />
-        <ModeToggle />
+        <ContactSection /> */}
       </main>
-      <Footer />
+      {/* <Footer /> */}
     </>
   );
 }

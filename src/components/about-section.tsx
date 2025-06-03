@@ -4,15 +4,26 @@ import { cn } from "@/lib/utils";
 import { Download } from "lucide-react";
 import Image from "next/image";
 import type { HTMLAttributes } from "react";
+import Link from "next/link";
 import { GithubLogo } from "./icons";
 
+import { DottedGridPattern } from "./designs/dotted-bg";
 const About = () => {
   return (
     <section
       id="about"
       className="relative w-full py-12 md:py-24"
-      aria-labelledby="about-heading"
-    >
+      aria-labelledby="about-heading">
+      <DottedGridPattern
+        width={20}
+        height={20}
+        opacity={0.4}
+        x={-1}
+        y={-1}
+        className={cn(
+          "[mask-image:linear-gradient(to_top_right,white,transparent,transparent)] "
+        )}
+      />
       <div className="container px-4 md:px-6 mx-auto max-w-6xl">
         <div className="max-w-screen-md mx-auto">
           <div className="flex flex-col md:flex-row-reverse gap-12 items-center">
@@ -28,8 +39,7 @@ const About = () => {
               </div>
               <h2
                 id="about-heading"
-                className="text-3xl md:text-4xl font-bold mb-4 tracking-tight"
-              >
+                className="text-3xl md:text-4xl font-bold mb-4 tracking-tight">
                 Passionate about creating impactful web experiences
               </h2>
               <p className="text-muted-foreground mb-6 text-base md:text-lg">
@@ -40,11 +50,15 @@ const About = () => {
                 professional development team.
               </p>
               <div className="flex flex-wrap gap-4 justify-center">
-                <Button className="rounded-full">
-                  <GithubLogo />
-                  <span>View Github</span>
-                </Button>
-                <Button variant="outline" className="rounded-full">
+                <Link href="https://github.com/luwenprangko">
+                  <Button className="rounded-full cursor-pointer">
+                    <GithubLogo />
+                    <span>View Github</span>
+                  </Button>
+                </Link>
+                <Button
+                  variant="outline"
+                  className="rounded-full cursor-not-allowed">
                   <Download className="mr-2 h-4 w-4" />
                   <span>Download CV</span>
                 </Button>
